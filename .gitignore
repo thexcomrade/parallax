@@ -1,43 +1,67 @@
-# Python bytecode & cache
+# Environment & secrets
+.env
+*.env
+!.env.example
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
-
-# Virtual Environments
-venv/
-backend/venv/
-.env
-.venv/
+*.so
+.Python
 env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Application Logs
-*.log
-*.log.*
-backend/app.log
-app.log
+# Testing & Linting
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Uploaded Images & Generated Artifacts (User Data & Privacy)
-backend/static/uploads/*
-!backend/static/uploads/.gitkeep
-!backend/static/uploads/back.jpg
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+frontend/dist/
+frontend/test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
-# Static Generated Results
-backend/static/results/*
+# Storage & Local Databases
+storage/
+*.db
+*.sqlite
+*.sqlite3
 
-# Large Datasets
-Dataset/
-dataset/
+# Model weights
+weights/*.pt
+weights/*.bin
+backend/app/ml/weights/*.pt
+!backend/app/ml/weights/.gitkeep
+!backend/app/ml/weights/model_card.json
 
-# Media Archives
-*.mp4
-*.avi
-*.zip
-*.tar.gz
-*.h5
-*.pt
-
-# Model Artifacts (Tracked locally or via LFS)
-*.pkl
-!backend/models/svm_model.pkl
-!backend/models/svm_scaler.pkl
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
