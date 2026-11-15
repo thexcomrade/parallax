@@ -97,9 +97,23 @@ app.include_router(api_router, prefix="/api/v1")
 
 # Production static frontend delivery
 frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+if not frontend_dist.exists():
+    for candidate in [
+        Path("/app/frontend/dist"),
+        Path(__file__).resolve().parent.parent / "dist",
+    ]:
+        if candidate.exists():
+            frontend_dist = candidate
+            break
+
 if frontend_dist.exists():
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(_full_path: str) -> FileResponse:
+        target_file = frontend_dist / _full_path
+        if _full_path and target_file.is_file():
+            return FileResponse(target_file)
         return FileResponse(frontend_dist / "index.html")

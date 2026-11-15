@@ -6,9 +6,8 @@ import logging
 import socket
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urlparse
-
 from typing import Any
+from urllib.parse import urlparse
 
 import certifi
 import httpx

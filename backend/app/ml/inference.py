@@ -60,7 +60,10 @@ def load_model() -> None:
                 map_location="cpu",
                 weights_only=True,
             )
-            model.load_state_dict(state)
+            if isinstance(state, dict) and "model_state_dict" in state:
+                model.load_state_dict(state["model_state_dict"])
+            else:
+                model.load_state_dict(state)
             MODEL_MODE = "trained"
             # SHA-256 of checkpoint for provenance
             sha = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()

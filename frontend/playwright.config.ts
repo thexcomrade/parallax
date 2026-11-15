@@ -33,6 +33,12 @@ export default defineConfig({
       },
     },
     {
+      name: 'laptop-1440',
+      use: {
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
       name: 'wide-1920',
       use: {
         viewport: { width: 1920, height: 1080 },

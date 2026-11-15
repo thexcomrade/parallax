@@ -1,15 +1,26 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.deps import get_current_user, get_db
 from app.core.errors import UnauthorizedException
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.db.models import User
-from app.schemas.auth import MessageResponse, TokenResponse, UserLogin, UserRegister, UserResponse
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    MessageResponse,
+    TokenResponse,
+    UserLogin,
+    UserRegister,
+    UserResponse,
+)
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+AUTH_LIMIT = "120/minute" if not settings.is_production else "10/minute"
+REFRESH_LIMIT = "300/minute" if not settings.is_production else "30/minute"
 
 
 @router.post(
@@ -18,7 +29,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register new user account",
 )
-@limiter.limit("10/minute")
+@limiter.limit(AUTH_LIMIT)
 def register(
     request: Request,
     payload: UserRegister,
@@ -33,7 +44,7 @@ def register(
     response_model=TokenResponse,
     summary="Authenticate and receive access token + rotating refresh cookie",
 )
-@limiter.limit("10/minute")
+@limiter.limit(AUTH_LIMIT)
 def login(
     request: Request,
     response: Response,
@@ -57,12 +68,13 @@ def login(
     response_model=TokenResponse,
     summary="Rotate refresh token cookie and receive fresh access token",
 )
-@limiter.limit("30/minute")
+@limiter.limit(REFRESH_LIMIT)
 def refresh(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
+    AuthService.validate_csrf_origin(request)
     raw_token = request.cookies.get("refresh_token")
     if not raw_token:
         raise UnauthorizedException("No refresh session cookie found")
@@ -88,6 +100,7 @@ def logout(
     response: Response,
     db: Session = Depends(get_db),
 ) -> MessageResponse:
+    AuthService.validate_csrf_origin(request)
     raw_token = request.cookies.get("refresh_token")
     if raw_token:
         AuthService.revoke_refresh_token(db, raw_token)
@@ -102,3 +115,57 @@ def logout(
 )
 def me(current_user: User = Depends(get_current_user)) -> UserResponse:
     return UserResponse.model_validate(current_user)
+
+
+@router.post(
+    "/change-password",
+    response_model=MessageResponse,
+    summary="Update account password and revoke existing sessions",
+)
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    AuthService.change_password(
+        db=db,
+        user=current_user,
+        old_pass=payload.current_password,
+        new_pass=payload.new_password,
+    )
+    return MessageResponse(message="Password successfully updated; previous sessions revoked")
+
+
+@router.post(
+    "/logout-all",
+    response_model=MessageResponse,
+    summary="Sign out everywhere by revoking all refresh tokens for this user",
+)
+@router.post(
+    "/revoke-all",
+    response_model=MessageResponse,
+    summary="Sign out everywhere by revoking all refresh tokens for this user",
+)
+def revoke_all(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    AuthService.revoke_all_tokens_for_user(db=db, user_id=current_user.id)
+    AuthService.clear_cookie(response)
+    return MessageResponse(message="All active sessions revoked")
+
+
+@router.delete(
+    "/account",
+    response_model=MessageResponse,
+    summary="Permanently delete user account and associated analyses",
+)
+def delete_account(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    AuthService.delete_account(db=db, user=current_user)
+    AuthService.clear_cookie(response)
+    return MessageResponse(message="Account and forensic records permanently purged")

@@ -19,9 +19,37 @@
   --color-alert-500: #FF4D5E;
   --color-alert-bg: rgba(255, 77, 94, 0.12);
 
+  /* Forensic Channel Modality Colors (Master Spec §6.3) */
+  --color-ch-visual: #3B82F6;
+  --color-ch-visual-border: #1D4ED8;
+  --color-ch-audio: #06B6D4;
+  --color-ch-audio-border: #0891B2;
+
   --color-text-100: #EEF2FA;
   --color-text-300: #A9B3C7;
+  --color-text-400: #8F9CAE;
   --color-text-500: #7886A0;
+
+  /* Master Spec Level 5 Aliases */
+  --color-bg-base: #060911;
+  --color-bg-surface: #0B111D;
+  --color-bg-surface-elevated: #10192A;
+  --color-background: #04060B;
+  --color-surface: #080B12;
+  --color-surface-elevated: #0F141E;
+  --color-surface-hover: #151C29;
+  --color-border: #1B2231;
+  --color-border-strong: #2A3550;
+  --color-cobalt: #1F4DFF;
+  --color-cobalt-light: #8BA3FF;
+  --color-cyan: #06B6D4;
+  --color-lime: #C8FF2E;
+  --color-danger: #FF4D5E;
+  --color-warning: #FFB84D;
+  --color-success: #C8FF2E;
+  --color-text-primary: #EEF2FA;
+  --color-text-secondary: #A9B3C7;
+  --color-text-muted: #68758B;
 
   --font-display: 'Anybody', sans-serif;
   --font-sans: 'Hanken Grotesk', sans-serif;
@@ -53,9 +81,37 @@
   --alert-500: #FF4D5E;
   --alert-bg: rgba(255, 77, 94, 0.12);
 
+  /* Forensic Channel Modality Colors (Master Spec §6.3) */
+  --ch-visual: #3B82F6;
+  --ch-visual-border: #1D4ED8;
+  --ch-audio: #06B6D4;
+  --ch-audio-border: #0891B2;
+  --cyan: #06B6D4;
+
   --text-100: #EEF2FA;
   --text-300: #A9B3C7;
+  --text-400: #8F9CAE;
   --text-500: #7886A0;
+
+  /* Master Spec Level 5 Aliases */
+  --bg-base: #060911;
+  --bg-surface: #0B111D;
+  --bg-surface-elevated: #10192A;
+  --background: #04060B;
+  --surface: #080B12;
+  --surface-elevated: #0F141E;
+  --surface-hover: #151C29;
+  --border: #1B2231;
+  --border-strong: #2A3550;
+  --cobalt: #1F4DFF;
+  --cobalt-light: #8BA3FF;
+  --lime: #C8FF2E;
+  --danger: #FF4D5E;
+  --warning: #FFB84D;
+  --success: #C8FF2E;
+  --text-primary: #EEF2FA;
+  --text-secondary: #A9B3C7;
+  --text-muted: #68758B;
 
   --font-display: 'Anybody', sans-serif;
   --font-text: 'Hanken Grotesk', sans-serif;

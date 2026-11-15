@@ -31,3 +31,10 @@ class TokenResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(
+        min_length=12, max_length=128, description="Password must be 12-128 characters"
+    )

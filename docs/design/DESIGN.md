@@ -148,3 +148,31 @@ Components must strictly consume CSS tokens defined in `tokens.css`.
   - `authentic`: Acid lime fill `rgba(200, 255, 46, 0.15)`, text `var(--lime-400)`, border `var(--lime-400)`.
   - `fake`: Alert red fill `var(--alert-bg)`, text `var(--alert-500)`, border `var(--alert-500)`, hazard-stripe texture.
   - `inconclusive`: Cobalt-300 fill `rgba(139, 163, 255, 0.12)`, text `var(--cobalt-300)`, border `var(--cobalt-400)`.
+
+---
+
+## 8. Layout Shell, Fluid 1760px Grid & Panel Variants (Master Spec §6)
+
+### 8.1 Desktop Grid Scaling (≥ 1280px to 1920px)
+- **Max Width**: `max-w-[1760px]` fluid canvas (`mx-auto w-full`). Do not constrain desktop layouts to a 1280px narrow column.
+- **Sidebar Rail**: 240–260px expanded navigation (`CommandRail`).
+- **Header Status Strip**: 48–56px high instrument telemetry header (`StatusStrip`).
+- **Surface Elevation Layers**:
+  - `Canvas`: Deep navy base (`#04060B` / `#060911`) with subtle atmospheric blue radial glow (`radial-gradient(circle at 50% 0%, rgba(31, 77, 255, 0.08), transparent 70%)`).
+  - `Surface`: Default panel background (`#080B12` / `#0B111D`).
+  - `Surface Elevated`: Interactive cards, dropdowns, inputs (`#0F141E` / `#10192A`).
+  - `Hairlines`: Subtle borders `rgba(151, 174, 210, 0.14)` and focused borders `rgba(151, 174, 210, 0.26)`.
+
+### 8.2 Distinct Modality Channel Tokens
+- **Visual / Video Channel**: Cobalt / Electric Blue (`--color-ch-visual: #3B82F6; --ch-visual: #3B82F6;`).
+- **Audio / Acoustic Channel**: Cyan (`--color-ch-audio: #06B6D4; --ch-audio: #06B6D4;`).
+- **Action / Success**: Acid Lime (`--color-lime-400: #C8FF2E;`), used sparingly for primary CTA and verified/success state.
+- **Threat / Discrepancy**: Alert Red (`--color-alert-500: #FF4D5E;`).
+- **Warning / Pending**: Amber (`--color-warning: #F59E0B;`).
+
+### 8.3 Reusable Panel Variants
+1. **Telemetry Cell**: Corner crop marks, uppercase mono header, micro status badge.
+2. **Hero Workspace**: Elevated surface with subtle radial gradient, primary action button, model status provenance chip.
+3. **Metric Card**: Large tabular display number (`Anybody`), uppercase label (`Hanken Grotesk`), subtext telemetry (`Martian Mono`).
+4. **Evidence Workbench**: Split dual-channel display comparing synchronized facial frames (Cobalt accent) and Mel-spectrogram (Cyan accent).
+

@@ -45,8 +45,22 @@ export const StatusStrip: React.FC = () => {
 
         <div className="h-4 w-px bg-[var(--line)] hidden md:block" />
 
-        {/* Model mode badge */}
+        {/* Global System Telemetry (API / DB / Model) */}
         <div className="hidden sm:flex items-center gap-2">
+          <span className="font-mono text-[10px] text-[var(--text-400)]">
+            API:{' '}
+            <span className={isDegraded ? 'text-amber-400' : 'text-[var(--lime-400)]'}>
+              {isDegraded ? 'DEG' : 'OK'}
+            </span>
+          </span>
+          <span className="text-[var(--line-strong)]">/</span>
+          <span className="font-mono text-[10px] text-[var(--text-400)]">
+            DB:{' '}
+            <span className={readyData?.db_connected ? 'text-[var(--lime-400)]' : 'text-[var(--alert-500)]'}>
+              {readyData?.db_connected ? 'OK' : 'DISC'}
+            </span>
+          </span>
+          <span className="text-[var(--line-strong)]">/</span>
           <span className="font-mono text-[11px] text-[var(--text-300)]">
             {modelData ? `${modelData.model_name} ${modelData.model_version}` : 'AVT²-DWF v1.0.0'}
           </span>

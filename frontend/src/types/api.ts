@@ -129,20 +129,78 @@ export interface SSEEvent {
 }
 
 // Feed schemas (Phase 8)
-export interface FeedItem {
+export interface ThreatFeedItem {
   title: string;
+  url: string;
+  domain: string | null;
+  seendate: string | null;
+  socialimage: string | null;
+  language: string | null;
+  sourcecountry: string | null;
+}
+
+export interface ThreatFeedResponse {
+  items: ThreatFeedItem[];
+  cached_at: string;
   source: string;
+}
+
+export interface ResearchPaperItem {
+  arxiv_id: string;
+  title: string;
+  authors: string[];
+  summary: string;
   url: string;
   published_at: string;
+}
+
+export interface ResearchFeedResponse {
+  items: ResearchPaperItem[];
+  cached_at: string;
+  source: string;
+}
+
+export interface PulseFeedItem {
+  object_id: string;
+  title: string;
+  url: string | null;
+  author: string;
+  points: number;
+  num_comments: number;
+  created_at: string;
+}
+
+export interface PulseFeedResponse {
+  items: PulseFeedItem[];
+  cached_at: string;
+  source: string;
 }
 
 export interface SampleItem {
   id: string;
   title: string;
+  description: string;
+  media_type: 'video' | 'audio';
+  duration_s: number;
+  file_size_bytes: number;
   source: string;
-  url: string;
-  licence: string;
+  page_url: string;
+  download_url: string;
+  license: string;
   attribution: string;
-  duration_s: number | null;
+  ground_truth: 'authentic' | 'synthetic' | 'inconclusive';
   thumbnail_url: string | null;
+  context_summary: string | null;
+}
+
+export interface SampleListResponse {
+  items: SampleItem[];
+  cached_at: string;
+  total: number;
+}
+
+export interface SampleAnalyzeResponse {
+  id: string;
+  status: string;
+  sample_id: string;
 }

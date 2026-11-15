@@ -74,8 +74,11 @@ class DynamicWeightFusion(nn.Module):
         w_a = weights[:, :1]  # [B, 1]
         w_v = weights[:, 1:]  # [B, 1]
 
-        # Modality masking: if all audio_mask values are 0, set w_a = 0, w_v = 1
-        audio_present = audio_mask.any().float()  # scalar: 1.0 or 0.0
+        # Modality masking: if audio_mask values are 0, set w_a = 0, w_v = 1
+        if audio_mask.ndim > 1:
+            audio_present = audio_mask.any(dim=-1, keepdim=True).float()  # [B, 1]
+        else:
+            audio_present = audio_mask.any().float()  # scalar
         w_a = w_a * audio_present
         # Renormalise so w_a + w_v = 1
         total = w_a + w_v + 1e-8
@@ -86,7 +89,8 @@ class DynamicWeightFusion(nn.Module):
         fused: Tensor = w_a * A + w_v * V  # [B, 256]
 
         # Sync score: mean cosine between aligned audio/video tokens
-        if audio_tokens is not None and video_tokens is not None and audio_present > 0.5:
+        has_audio = bool((audio_present > 0.5).any())
+        if audio_tokens is not None and video_tokens is not None and has_audio:
             # Both [B, K, 256] — compute per-window cosine and average
             sync = F.cosine_similarity(audio_tokens, video_tokens, dim=-1)  # [B, K]
             sync_score: Tensor = sync.mean()

@@ -23,8 +23,8 @@ export const HistoryPage: React.FC = () => {
       try {
         const res = await api.get<AnalysisListResponse>(`/analyses?page=${page}&size=15`);
         if (mounted) setData(res);
-      } catch (err) {
-        console.error('Failed to load history:', err);
+      } catch {
+        // Handled silently
       } finally {
         if (mounted) setLoading(false);
       }
@@ -54,22 +54,52 @@ export const HistoryPage: React.FC = () => {
           </h1>
         </div>
 
-        {/* Verdict filter tabs */}
-        <div className="flex items-center gap-1 p-1 bg-black-900 border border-line rounded font-mono text-xs">
-          {['ALL', 'AUTHENTIC', 'FAKE', 'INCONCLUSIVE'].map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setVerdictFilter(v)}
-              className={`px-3 py-1 rounded transition-colors ${
-                verdictFilter === v
-                  ? 'bg-cobalt-500 text-white font-bold'
-                  : 'text-text-400 hover:text-text-100'
-              }`}
+        {/* Filter and Export tools */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1 p-1 bg-black-900 border border-line rounded font-mono text-xs">
+            {['ALL', 'AUTHENTIC', 'FAKE', 'INCONCLUSIVE'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setVerdictFilter(v)}
+                className={`px-3 py-1 rounded transition-colors ${
+                  verdictFilter === v
+                    ? 'bg-cobalt-500 text-white font-bold'
+                    : 'text-text-400 hover:text-text-100'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {items.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const headers = ['id', 'original_name', 'duration_s', 'status', 'verdict', 'p_fake', 'created_at'];
+                const rows = items.map((i) => [
+                  i.id,
+                  `"${i.original_name.replace(/"/g, '""')}"`,
+                  i.duration_s.toFixed(2),
+                  i.status,
+                  i.verdict ?? 'NONE',
+                  i.p_fake !== null ? `${(i.p_fake * 100).toFixed(1)}%` : 'N/A',
+                  i.created_at,
+                ]);
+                const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `parallax_audit_history_${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
             >
-              {v}
-            </button>
-          ))}
+              EXPORT CSV
+            </Button>
+          )}
         </div>
       </div>
 
@@ -112,7 +142,7 @@ export const HistoryPage: React.FC = () => {
                     <div className="font-medium text-text-100 group-hover:text-cobalt-300 transition-colors">
                       {item.original_name}
                     </div>
-                    <div className="font-mono text-[11px] text-text-500 flex items-center gap-3 mt-0.5">
+                    <div className="font-mono text-[11px] text-text-400 flex items-center gap-3 mt-0.5">
                       <span>ID: {item.id.slice(0, 8)}</span>
                       <span>DUR: {formatTimecode(item.duration_s)}</span>
                       <span>{formatRelativeTime(item.created_at)}</span>

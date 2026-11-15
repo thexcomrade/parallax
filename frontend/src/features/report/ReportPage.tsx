@@ -99,7 +99,7 @@ export const ReportPage: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center p-12 min-h-[400px] font-mono text-xs text-alert-500 gap-3">
         <div>ERR // {error ?? 'Report not found'}</div>
-        <Button variant="secondary" size="sm" onClick={() => navigate('/app/analyses')}>
+        <Button variant="secondary" size="sm" onClick={() => navigate('/app/analyze')}>
           RETURN TO INGESTION
         </Button>
       </div>
@@ -218,6 +218,16 @@ export const ReportPage: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Mandatory Forensic Integrity Disclaimer (Master Specification Level 5) */}
+      <footer className="mt-2 p-4 bg-[var(--black-900)] border border-[var(--line)] rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono text-[var(--text-400)]">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[var(--cobalt-400)] shrink-0" />
+          <span className="font-bold text-white uppercase tracking-wider">CRITICAL LIMITATION:</span>
+          <span>Model-generated probability reflects statistical confidence on this media clip, not absolute forensic proof of authenticity or manipulation.</span>
+        </div>
+        <span className="text-[10px] text-[var(--text-500)] shrink-0">AVT²-DWF FORENSICS STANDARD</span>
+      </footer>
     </div>
   );
 };

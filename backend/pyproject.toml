@@ -94,6 +94,8 @@ module = [
     "defusedxml.*",
     "mediapipe.*",
     "soundfile.*",
+    "yaml.*",
+    "sklearn.*",
 ]
 ignore_missing_imports = true
 

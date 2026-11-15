@@ -20,6 +20,7 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
   test('Analyze dropzone renders with viewfinder corners, passes a11y & handles upload', async ({
     page,
   }) => {
+    test.setTimeout(90000);
     await page.goto('/app/analyze');
     await expect(page.locator('h1')).toContainText('Analyze Media Clip');
 
@@ -50,6 +51,11 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
+    // Wait for client metadata probe and click "START FORENSIC ANALYSIS"
+    const startButton = page.getByRole('button', { name: /START FORENSIC ANALYSIS/i });
+    await startButton.waitFor({ state: 'visible', timeout: 10000 });
+    await startButton.click();
+
     // Verify Pipeline Rail displays and stages stream
     await expect(page.getByText(/SCAN IN PROGRESS/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('PIPELINE MONITOR // AVT²-DWF')).toBeVisible();
@@ -58,8 +64,14 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
     await expect(page).toHaveURL(/\/app\/analyses\/[a-f0-9-]+/, { timeout: 45000 });
     await expect(page.getByText(/DOSSIER \/\//i)).toBeVisible();
 
-    // Verify Untrained Banner
-    await expect(page.getByText(/Untrained weights — scores are not meaningful/i).first()).toBeVisible();
+    // Verify Mode Handling & Verdict Engine
+    const isUntrained = await page.getByText(/UNCHECKED SYSTEM/i).isVisible();
+    if (isUntrained) {
+      await expect(page.getByText(/Untrained weights — scores are not meaningful/i).first()).toBeVisible();
+      await expect(page.getByText(/VERDICT ENGINE \/\/ RESEARCH MODE/i)).toBeVisible();
+    } else {
+      await expect(page.getByText(/VERDICT ENGINE \/\/ CALIBRATED/i)).toBeVisible();
+    }
 
     // Verify Forensic Disclaimer
     await expect(
@@ -67,7 +79,6 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
     ).toBeVisible();
 
     // Verify Core Forensic Components
-    await expect(page.getByText(/VERDICT ENGINE \/\/ CALIBRATED/i)).toBeVisible();
     await expect(page.getByText(/FUSION BALANCE \/\/ DWF/i)).toBeVisible();
     await expect(page.getByText(/TIMELINE RECONSTRUCTION \/\/ MULTIMODAL/i)).toBeVisible();
     await expect(page.getByText(/CH-V \/\/ CONTACT SHEET/i)).toBeVisible();
@@ -77,6 +88,9 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
     const reportScroll = await page.evaluate(() => document.documentElement.scrollWidth);
     const reportClient = await page.evaluate(() => document.documentElement.clientWidth);
     expect(reportScroll).toBeLessThanOrEqual(reportClient + 1);
+
+    // Wait for route transition animation to fully settle before Axe audit
+    await page.waitForTimeout(400);
 
     // Axe audit on Report page
     const reportAxe = await new AxeBuilder({ page }).analyze();
@@ -92,6 +106,9 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
     await page.goto('/app/history');
     await expect(page.locator('h1')).toContainText('Analysis History');
     await expect(page.getByText('test_sample.mp4')).toBeVisible();
+
+    // Wait for route transition animation to settle
+    await page.waitForTimeout(400);
 
     // Axe audit on History page
     const historyAxe = await new AxeBuilder({ page }).analyze();

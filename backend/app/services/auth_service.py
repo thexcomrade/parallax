@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import Response
+from fastapi import Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -164,6 +164,60 @@ class AuthService:
         for t in active_tokens:
             t.revoked_at = now
         db.commit()
+
+    @staticmethod
+    def change_password(db: Session, user: User, old_pass: str, new_pass: str) -> None:
+        """Verify old password and set Argon2 hashed new password."""
+        if not verify_password(old_pass, user.password_hash):
+            raise UnauthorizedException("Current password verification failed")
+        if len(new_pass) < 12:
+            raise AppException(
+                "WEAK_PASSWORD", "Password must be at least 12 characters", status_code=400
+            )
+        user.password_hash = hash_password(new_pass)
+        db.commit()
+        AuthService.revoke_all_tokens_for_user(db, user.id)
+
+    @staticmethod
+    def delete_account(db: Session, user: User) -> None:
+        """Permanently delete user account and cascade delete all owned records."""
+        db.delete(user)
+        db.commit()
+
+    @staticmethod
+    def validate_csrf_origin(request: "Request") -> None:
+        """Validate Origin/Referer header on cookie-authenticated requests to prevent CSRF."""
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+
+        # If neither Origin nor Referer is present on browser mutation, reject in prod
+        target = origin or referer
+        if not target:
+            # Native curl / backend test clients without origin are permitted in non-production
+            if settings.is_production:
+                raise AppException(
+                    code="CSRF_FAILED",
+                    message="Missing Origin or Referer header on cookie mutation",
+                    status_code=403,
+                )
+            return
+
+        from urllib.parse import urlparse
+
+        parsed = urlparse(target)
+        origin_host = parsed.netloc.split(":")[0]
+        request_host = request.base_url.hostname or "localhost"
+
+        allowed_hosts = {request_host, "localhost", "127.0.0.1"}
+        if settings.is_production:
+            allowed_hosts = {request_host}
+
+        if origin_host not in allowed_hosts:
+            raise AppException(
+                code="CSRF_REJECTED",
+                message=f"Untrusted origin '{origin_host}' rejected by CSRF guard",
+                status_code=403,
+            )
 
     @staticmethod
     def set_cookie(response: Response, raw_token: str) -> None:

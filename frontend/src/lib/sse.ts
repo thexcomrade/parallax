@@ -69,8 +69,8 @@ export function subscribeToAnalysisEvents(
                   options.onDone?.();
                   return;
                 }
-              } catch (e) {
-                console.error('Failed to parse SSE payload:', e);
+              } catch {
+                // Ignore parse errors from non-JSON heartbeats
               }
             }
           }

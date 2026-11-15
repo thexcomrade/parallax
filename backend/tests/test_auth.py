@@ -154,11 +154,113 @@ def test_system_health_and_readiness(client: TestClient) -> None:
     ready_res = client.get("/api/v1/ready")
     assert ready_res.status_code == 200
     assert ready_res.json()["db_connected"] is True
-    assert ready_res.json()["model_mode"] == "untrained"
+    assert ready_res.json()["model_mode"] in ("untrained", "trained")
 
     # Model Card
     model_res = client.get("/api/v1/model")
     assert model_res.status_code == 200
     data = model_res.json()
-    assert data["model_mode"] == "untrained"
+    assert data["model_mode"] in ("untrained", "trained")
     assert data["reported_metrics"]["accuracy_controlled"] == 0.91
+
+
+def test_logout_all_sessions(client: TestClient, test_user: User) -> None:
+    # 1. Login to get token and cookie
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    access_token = login_res.json()["access_token"]
+    refresh_token = login_res.cookies.get("refresh_token")
+
+    # 2. Call logout-all
+    client.cookies.set("refresh_token", refresh_token)
+    logout_res = client.post(
+        "/api/v1/auth/logout-all",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert logout_res.status_code == 200
+    assert logout_res.json()["message"] == "All active sessions revoked"
+
+    # 3. Old refresh token should now be rejected
+    refresh_res = client.post("/api/v1/auth/refresh")
+    assert refresh_res.status_code == 401
+
+
+def test_csrf_origin_rejection(client: TestClient, test_user: User) -> None:
+    # Login
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    token = login_res.cookies.get("refresh_token")
+    client.cookies.set("refresh_token", token)
+
+    # Attempt refresh with malicious origin
+    malicious_res = client.post(
+        "/api/v1/auth/refresh",
+        headers={"Origin": "https://attacker-phishing-site.xyz"},
+    )
+    assert malicious_res.status_code == 403
+    assert malicious_res.json()["code"] == "CSRF_REJECTED"
+
+
+def test_change_password_and_verify_new_login(client: TestClient, test_user: User) -> None:
+    # 1. Login with original password
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    assert login_res.status_code == 200
+    access_token = login_res.json()["access_token"]
+
+    # 2. Change password
+    change_res = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "SecureMasterPassword2026!",
+            "new_password": "NewSecurePassword2026!#",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert change_res.status_code == 200
+
+    # 3. Old password should fail
+    fail_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    assert fail_res.status_code == 401
+
+    # 4. New password should succeed
+    success_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "NewSecurePassword2026!#"},
+    )
+    assert success_res.status_code == 200
+
+
+def test_delete_account(client: TestClient, test_user: User) -> None:
+    # 1. Login
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    assert login_res.status_code == 200
+    access_token = login_res.json()["access_token"]
+
+    # 2. Delete account
+    del_res = client.delete(
+        "/api/v1/auth/account",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert del_res.status_code == 200
+    assert del_res.json()["message"] == "Account and forensic records permanently purged"
+
+    # 3. Login should now fail because user is purged
+    fail_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    assert fail_res.status_code == 401
+

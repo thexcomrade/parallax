@@ -63,10 +63,11 @@ test.describe('Phase 3: Auth & Protected Routes', () => {
   });
 
   test('Full authentication lifecycle: Register -> Auto-login -> Reload session -> Logout', async ({ page }) => {
+    const email = `analyst_auth_${Date.now()}_${Math.floor(Math.random() * 100000)}@parallax.io`;
     await page.goto('/register');
 
     // Fill in registration form
-    await page.getByLabel('Operator Email').fill(testEmail);
+    await page.getByLabel('Operator Email').fill(email);
     await page.getByLabel('New Password').fill(testPassword);
     await page.getByLabel('Confirm Password').fill(testPassword);
 
@@ -78,12 +79,17 @@ test.describe('Phase 3: Auth & Protected Routes', () => {
 
     // Should redirect to /app (Dashboard)
     await expect(page).toHaveURL(/\/app/);
-    await expect(page.locator('h1')).toContainText('DETECTION BENCH');
-    await expect(page.locator('main').getByText(testEmail)).toBeVisible();
+    await expect(page.locator('h1')).toContainText('Forensic Command Bench');
 
-    // Take screenshot of authenticated dashboard
     const viewport = page.viewportSize();
     const width = viewport ? viewport.width : 1280;
+    if (width < 768) {
+      await expect(page.locator('header').getByRole('button', { name: /EXIT/i })).toBeVisible();
+    } else {
+      await expect(page.locator('header').getByText(email)).toBeVisible();
+    }
+
+    // Take screenshot of authenticated dashboard
     await page.screenshot({
       path: `test-results/screenshots/phase3-dashboard-${width}px.png`,
       fullPage: true,
@@ -92,8 +98,13 @@ test.describe('Phase 3: Auth & Protected Routes', () => {
     // Reload page: in-memory token is cleared, but silent refresh uses HttpOnly cookie to restore session!
     await page.reload();
     await expect(page).toHaveURL(/\/app/);
-    await expect(page.locator('h1')).toContainText('DETECTION BENCH');
-    await expect(page.locator('main').getByText(testEmail)).toBeVisible();
+    await expect(page.locator('h1')).toContainText('Forensic Command Bench');
+
+    if (width < 768) {
+      await expect(page.locator('header').getByRole('button', { name: /EXIT/i })).toBeVisible();
+    } else {
+      await expect(page.locator('header').getByText(email)).toBeVisible();
+    }
 
     // Sign out
     await page.getByRole('button', { name: /Sign out|EXIT/i }).click();

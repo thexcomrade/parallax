@@ -19,6 +19,7 @@ def _auth_headers(user: User) -> dict[str, str]:
     token = create_access_token(data={"sub": str(user.id)})
     return {"Authorization": f"Bearer {token}"}
 
+
 SAMPLE_ATOM_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>

@@ -1,0 +1,36 @@
+# PARALLAX AVT²-DWF Offline Training Configuration
+# Architecture and training hyperparameters (README §5, §8.7)
+
+model:
+  d_model: 256
+  n_frame_tokens: 4
+  face_layers: 4
+  face_heads: 8
+  audio_layers: 4
+  audio_heads: 8
+  pretrained_vit: true
+  temperature_scaling: true
+
+data:
+  sample_frames: 32
+  window_size: 16
+  window_stride: 8
+  target_size: 224
+  audio_sample_rate: 16000
+  n_mfcc: 40
+  n_mels: 64
+  split_ratio: 0.8  # Identity-disjoint 80/20 partition
+
+training:
+  batch_size: 8
+  epochs: 20
+  lr: 0.0001
+  weight_decay: 0.01
+  warmup_epochs: 2
+  patience: 5
+  seed: 42
+  mixed_precision: true
+
+calibration:
+  p_fake_hi: 0.65
+  p_fake_lo: 0.35

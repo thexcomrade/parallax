@@ -322,7 +322,7 @@ def test_inference_run_returns_valid_result(
     assert 0.0 <= result.w_audio <= 1.0
     assert 0.0 <= result.w_video <= 1.0
     assert abs(result.w_audio + result.w_video - 1.0) < 1e-4
-    assert result.model_mode == "untrained"
+    assert result.model_mode in ("untrained", "trained")
     assert isinstance(result.per_window_scores, list)
     assert all(0.0 <= s <= 1.0 for s in result.per_window_scores)
 
@@ -401,9 +401,13 @@ def test_model_card_json_structure(tmp_path: Path) -> None:
     ]
     for field in required_fields:
         assert field in mc, f"model_card.json missing field: {field}"
-    assert mc["model_mode"] == "untrained"
-    assert mc["checkpoint_hash"] is None
-    assert mc["live_metrics"] is None
+    assert mc["model_mode"] in ("untrained", "trained")
+    if mc["model_mode"] == "trained":
+        assert isinstance(mc["checkpoint_hash"], str)
+        assert isinstance(mc["live_metrics"], dict)
+    else:
+        assert mc["checkpoint_hash"] is None
+        assert mc["live_metrics"] is None
 
 
 def test_full_ml_pipeline_stages_and_output(
@@ -440,7 +444,7 @@ def test_full_ml_pipeline_stages_and_output(
 
     res = done_event.result
     assert res.inference.verdict in ("FAKE", "AUTHENTIC", "INCONCLUSIVE")
-    assert res.inference.model_mode == "untrained"
+    assert res.inference.model_mode in ("untrained", "trained")
     assert 0.0 <= res.inference.w_audio <= 1.0
     assert 0.0 <= res.inference.w_video <= 1.0
     assert len(res.explain.heatmap_paths) > 0
