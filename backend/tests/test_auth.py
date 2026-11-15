@@ -263,4 +263,3 @@ def test_delete_account(client: TestClient, test_user: User) -> None:
         json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
     )
     assert fail_res.status_code == 401
-

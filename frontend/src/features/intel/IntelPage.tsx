@@ -115,7 +115,7 @@ export const IntelPage: React.FC = () => {
                       {item.domain || 'NEWS_SOURCE'}
                     </span>
                     {item.sourcecountry && (
-                      <span className="text-[var(--text-500)] uppercase">
+                      <span className="text-[var(--text-400)] uppercase">
                         [{item.sourcecountry}]
                       </span>
                     )}
@@ -128,7 +128,7 @@ export const IntelPage: React.FC = () => {
                   >
                     {item.title}
                   </a>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-500)] pt-1 border-t border-[var(--line)]">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-400)] pt-1 border-t border-[var(--line)]">
                     <span>{item.language || 'English'}</span>
                     <span className="text-[var(--cobalt-400)]">SOURCE ↗</span>
                   </div>
@@ -167,7 +167,7 @@ export const IntelPage: React.FC = () => {
                     <span className="px-1.5 py-0.5 bg-[var(--black-900)] border border-[var(--line)] text-[var(--lime-400)] font-semibold">
                       arXiv:{paper.arxiv_id}
                     </span>
-                    <span className="text-[var(--text-500)]">
+                    <span className="text-[var(--text-400)]">
                       {paper.published_at ? formatRelativeTime(paper.published_at) : 'RECENT'}
                     </span>
                   </div>
@@ -225,7 +225,7 @@ export const IntelPage: React.FC = () => {
                     <span className="text-[var(--lime-400)] font-bold">
                       ▲ {story.points} PTS
                     </span>
-                    <span className="text-[var(--text-500)]">
+                    <span className="text-[var(--text-400)]">
                       {story.num_comments} COMMENTS
                     </span>
                   </div>
@@ -237,7 +237,7 @@ export const IntelPage: React.FC = () => {
                   >
                     {story.title}
                   </a>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-500)] pt-1 border-t border-[var(--line)]">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-400)] pt-1 border-t border-[var(--line)]">
                     <span>AUTHOR: {story.author}</span>
                     <span className="text-[var(--cobalt-400)]">THREAD ↗</span>
                   </div>

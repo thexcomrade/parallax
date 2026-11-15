@@ -197,7 +197,7 @@ export const LibraryPage: React.FC = () => {
                       {sample.source} ↗
                     </a>
                   </div>
-                  <div className="truncate text-[var(--text-500)]">
+                  <div className="truncate text-[var(--text-400)]">
                     ATTR: {sample.attribution}
                   </div>
                 </div>

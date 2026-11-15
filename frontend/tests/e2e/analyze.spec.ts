@@ -119,6 +119,34 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
       path: `test-results/screenshots/phase7-history-${width}px.png`,
       fullPage: true,
     });
+
+    // Test History Search functionality
+    const searchInput = page.getByPlaceholder(/Search archive by filename or ID/i);
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill('test_sample');
+    await expect(page.getByText('test_sample.mp4')).toBeVisible();
+
+    // Test search for non-matching item
+    await searchInput.fill('nonexistent_clip_xyz');
+    await expect(page.getByText(/NO ANALYSES MATCH CURRENT QUERY/i)).toBeVisible();
+
+    // Reset search
+    await page.getByRole('button', { name: /RESET FILTERS/i }).click();
+    await expect(page.getByText('test_sample.mp4')).toBeVisible();
+
+    // Reopen dossier from history
+    await page.getByText('test_sample.mp4').click();
+    await expect(page).toHaveURL(/\/app\/analyses\/[a-f0-9-]+/);
+    await expect(page.getByText(/DOSSIER \/\//i)).toBeVisible();
+
+    // Delete dossier end-to-end
+    page.on('dialog', (dialog) => dialog.accept());
+    const deleteButton = page.getByRole('button', { name: /^DELETE$/i });
+    await deleteButton.click();
+
+    // Verify redirected back to history and archive is now empty
+    await expect(page).toHaveURL(/\/app\/history/);
+    await expect(page.getByText(/NO ANALYSES RECORDED IN ARCHIVE/i)).toBeVisible();
   });
 
   test('Respects prefers-reduced-motion on Report page', async ({ page }) => {

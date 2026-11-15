@@ -2,7 +2,7 @@
   "model_name": "AVT2-DWF",
   "model_version": "0.0.0",
   "model_mode": "trained",
-  "checkpoint_hash": "7723aa36e949f673",
+  "checkpoint_hash": "6de2e663799ee868",
   "architecture": {
     "face_encoder": "ViT-B/16 + 4-layer 8-head temporal Transformer (d=256, n=4)",
     "audio_encoder": "MFCC/log-mel patch embed + 4-layer 8-head Transformer (d=256)",
@@ -35,7 +35,7 @@
     "static_fusion_auc": 0.5,
     "dynamic_dwf_auc": 0.5,
     "dwf_gain_over_static": 0.0,
-    "mode": "dynamic_dwf"
+    "mode": "static_fusion"
   },
   "limitations": [
     "Untrained weights \u2014 scores are not meaningful.",
@@ -47,5 +47,5 @@
   "intended_use": "Research and educational demonstration of multimodal deepfake detection.",
   "out_of_scope": "Not for use as sole evidence in legal, journalistic or law-enforcement contexts.",
   "created_at": null,
-  "evaluated_at": "2026-11-15T12:20:52.958299+00:00"
+  "evaluated_at": "2026-11-15T13:56:56.261345+00:00"
 }

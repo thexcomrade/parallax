@@ -221,3 +221,41 @@ def test_artifact_traversal_guard(
         # Must be rejected (400, 404, or 422), never allowed (200)
         assert resp.status_code in (400, 404, 422)
         assert resp.status_code != 200
+
+
+def test_list_analyses_search_and_verdict_filter(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    """GET /analyses supports search query 'q' and 'verdict' filtering."""
+    user = _create_user(db_session, "user_search@test.io")
+    headers = _auth_headers(user)
+
+    a1 = _seed_analysis(db_session, user, original_name="deepfake_speech.mp4")
+    a1.verdict = "FAKE"
+    a2 = _seed_analysis(db_session, user, original_name="real_broadcast.mp4")
+    a2.verdict = "AUTHENTIC"
+    db_session.commit()
+
+    # Search by partial filename
+    r_search = client.get("/api/v1/analyses?q=speech", headers=headers)
+    assert r_search.status_code == 200
+    d_search = r_search.json()
+    assert d_search["total"] == 1
+    assert d_search["items"][0]["id"] == a1.id
+
+    # Filter by verdict
+    r_verdict = client.get("/api/v1/analyses?verdict=AUTHENTIC", headers=headers)
+    assert r_verdict.status_code == 200
+    d_verdict = r_verdict.json()
+    assert d_verdict["total"] == 1
+    assert d_verdict["items"][0]["id"] == a2.id
+
+    # Successful deletion by owner
+    r_del = client.delete(f"/api/v1/analyses/{a1.id}", headers=headers)
+    assert r_del.status_code == 200
+    assert r_del.json()["ok"] is True
+
+    # Re-access returns 404
+    r_reget = client.get(f"/api/v1/analyses/{a1.id}", headers=headers)
+    assert r_reget.status_code == 404

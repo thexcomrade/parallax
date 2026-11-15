@@ -140,19 +140,25 @@ export const ModelCardPage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="p-2 bg-[var(--black-900)] rounded-xs border border-[var(--line)]">
-                    <div className="text-[10px] text-[var(--text-500)]">ACC (CTRL)</div>
-                    <div className="text-sm font-bold text-white">91.0%</div>
+                    <div className="text-[10px] text-[var(--text-400)]">ACC (CTRL)</div>
+                    <div className="text-sm font-bold text-white">
+                      {card?.reported_metrics ? `${(card.reported_metrics.accuracy_controlled * 100).toFixed(1)}%` : '91.0%'}
+                    </div>
                   </div>
                   <div className="p-2 bg-[var(--black-900)] rounded-xs border border-[var(--line)]">
-                    <div className="text-[10px] text-[var(--text-500)]">ACC (WILD)</div>
-                    <div className="text-sm font-bold text-white">78.0%</div>
+                    <div className="text-[10px] text-[var(--text-400)]">ACC (WILD)</div>
+                    <div className="text-sm font-bold text-white">
+                      {card?.reported_metrics ? `${(card.reported_metrics.accuracy_real_world * 100).toFixed(1)}%` : '78.0%'}
+                    </div>
                   </div>
                   <div className="p-2 bg-[var(--black-900)] rounded-xs border border-[var(--line)]">
-                    <div className="text-[10px] text-[var(--text-500)]">AUC-ROC</div>
-                    <div className="text-sm font-bold text-[var(--lime-400)]">0.920</div>
+                    <div className="text-[10px] text-[var(--text-400)]">AUC-ROC</div>
+                    <div className="text-sm font-bold text-[var(--lime-400)]">
+                      {card?.reported_metrics ? card.reported_metrics.auc_roc.toFixed(3) : '0.920'}
+                    </div>
                   </div>
                 </div>
-                <span className="text-[9px] text-[var(--text-500)] italic">
+                <span className="text-[10px] text-[var(--text-400)] italic">
                   * Documented under controlled lab evaluation environment.
                 </span>
               </div>
@@ -161,12 +167,49 @@ export const ModelCardPage: React.FC = () => {
               <div className="p-3 bg-[var(--black-950)] border border-[var(--line)] rounded-[var(--radius-sm)] flex flex-col gap-2">
                 <div className="flex items-center justify-between text-[10px] text-[var(--lime-400)] font-bold uppercase">
                   <span>LIVE REPO CHECKPOINT</span>
-                  <span>LOCAL</span>
+                  <span>{card?.checkpoint_hash ? `SHA256 // ${card.checkpoint_hash.slice(0, 12)}` : 'LOCAL'}</span>
                 </div>
                 <div className="p-3 bg-[var(--black-900)] rounded-xs border border-[var(--line)] text-center text-xs text-[var(--text-400)]">
-                  {isUntrained
-                    ? 'UNTRAINED WEIGHTS ACTIVE // LIVE AUC PENDING PHASE 10 TRAINING SCRIPT EXECUTION'
-                    : 'CHECKPOINT VERIFIED // LIVE AUC 0.894 (CALIBRATED)'}
+                  {isUntrained ? (
+                    'UNTRAINED WEIGHTS ACTIVE // LIVE EVALUATION RUN PENDING'
+                  ) : card?.live_metrics ? (
+                    <div className="grid grid-cols-2 gap-2 text-left font-mono">
+                      <div className="flex justify-between border-b border-[var(--line)] py-1">
+                        <span className="text-[var(--text-400)]">ACCURACY:</span>
+                        <span className="text-white font-bold">
+                          {typeof card.live_metrics.accuracy === 'number'
+                            ? `${(card.live_metrics.accuracy * 100).toFixed(1)}%`
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-[var(--line)] py-1">
+                        <span className="text-[var(--text-400)]">LIVE AUC:</span>
+                        <span className="text-[var(--lime-400)] font-bold">
+                          {typeof card.live_metrics.auc === 'number'
+                            ? card.live_metrics.auc.toFixed(3)
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-[var(--text-400)]">STATIC AUC:</span>
+                        <span className="text-white font-bold">
+                          {typeof card.live_metrics.static_fusion_auc === 'number'
+                            ? card.live_metrics.static_fusion_auc.toFixed(3)
+                            : '0.500'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-[var(--text-400)]">DWF GAIN:</span>
+                        <span className="text-[var(--cobalt-300)] font-bold">
+                          {typeof card.live_metrics.dwf_gain_over_static === 'number'
+                            ? `+${card.live_metrics.dwf_gain_over_static.toFixed(3)}`
+                            : '0.000'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    'CHECKPOINT VERIFIED // LIVE METRICS AVAILABLE'
+                  )}
                 </div>
               </div>
             </div>

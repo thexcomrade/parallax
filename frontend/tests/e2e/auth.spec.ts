@@ -2,8 +2,6 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 test.describe('Phase 3: Auth & Protected Routes', () => {
-  const timestamp = Date.now();
-  const testEmail = `analyst_${timestamp}@parallax.io`;
   const testPassword = 'SecureMasterPassword2026!';
 
   test('Protected route redirects unauthenticated user to /login?next=...', async ({ page }) => {

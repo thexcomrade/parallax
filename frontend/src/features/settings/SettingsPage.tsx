@@ -130,7 +130,7 @@ export const SettingsPage: React.FC = () => {
               <span className="font-mono text-sm font-bold text-white">
                 {user?.email || 'analyst@parallax.io'}
               </span>
-              <span className="font-mono text-xs text-[var(--text-500)]">
+              <span className="font-mono text-xs text-[var(--text-400)]">
                 OPERATOR ID // #{user?.id || 1} • REGISTERED {user?.created_at ? formatRelativeTime(user.created_at) : 'RECENTLY'}
               </span>
             </div>

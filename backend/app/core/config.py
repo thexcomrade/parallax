@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Ensure winget / local binary paths are included on Windows
@@ -11,9 +11,16 @@ if os.name == "nt":
         os.environ["PATH"] = winget_dir + os.pathsep + os.environ.get("PATH", "")
 
 
+_CORE_DIR = Path(__file__).resolve().parent
+_APP_DIR = _CORE_DIR.parent
+_BACKEND_DIR = _APP_DIR.parent
+_REPO_ROOT = _BACKEND_DIR.parent
+_ENV_FILE = _REPO_ROOT / ".env" if (_REPO_ROOT / ".env").exists() else _BACKEND_DIR / ".env"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=("../.env", ".env"),
+        env_file=(str(_ENV_FILE), "../.env", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -39,6 +46,17 @@ class Settings(BaseSettings):
     # Calibration thresholds from README §5
     P_FAKE_HI: float = 0.65
     P_FAKE_LO: float = 0.35
+
+    @field_validator("SAMPLE_HOST_ALLOWLIST", mode="before")
+    @classmethod
+    def set_default_allowlist(cls, v: str | None) -> str:
+        default = (
+            "commons.wikimedia.org,upload.wikimedia.org,archive.org,"
+            "ia800000.us.archive.org,thispersondoesnotexist.com,api.dicebear.com"
+        )
+        if not v or not str(v).strip():
+            return default
+        return str(v)
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":

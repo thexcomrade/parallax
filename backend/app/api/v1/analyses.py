@@ -75,15 +75,19 @@ async def create_analysis(
 def list_analyses(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, max_length=100),
+    verdict: str | None = Query(None, max_length=20),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AnalysisListResponse:
-    """List authenticated user's analyses with pagination."""
+    """List authenticated user's analyses with pagination and optional search/verdict filter."""
     items, total = AnalysisService.list_analyses(
         db=db,
         user_id=current_user.id,
         page=page,
         size=size,
+        q=q,
+        verdict=verdict,
     )
     return AnalysisListResponse(items=items, total=total, page=page, size=size)
 

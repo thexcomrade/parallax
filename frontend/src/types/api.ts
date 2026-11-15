@@ -50,7 +50,14 @@ export interface ApiError {
 }
 
 // Analysis schemas (Phase 6 — referenced here for type completeness)
-export type AnalysisStatus = 'queued' | 'running' | 'done' | 'error';
+export type AnalysisStatus =
+  | 'queued'
+  | 'processing'
+  | 'running'
+  | 'completed'
+  | 'done'
+  | 'failed'
+  | 'error';
 export type AnalysisStage =
   | 'probe'
   | 'frames'

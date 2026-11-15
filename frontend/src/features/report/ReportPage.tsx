@@ -140,6 +140,27 @@ export const ReportPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Pipeline Failure Banner if status is failed */}
+      {analysis.status === 'failed' && (
+        <div
+          role="alert"
+          className="p-4 bg-black-900 border border-alert-500/50 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs text-alert-500"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-alert-500 inline-block" />
+            <span className="font-bold uppercase tracking-wider">
+              PIPELINE EXECUTION FAILED // {analysis.stage.toUpperCase()}:
+            </span>
+            <span className="text-text-200">
+              {analysis.error || 'A fatal anomaly occurred during signal processing.'}
+            </span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/app/analyze')}>
+            RETRY INGESTION
+          </Button>
+        </div>
+      )}
+
       {/* Untrained Banner if applicable */}
       {analysis.model_mode === 'untrained' && (
         <div

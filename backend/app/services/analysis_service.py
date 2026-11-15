@@ -13,7 +13,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -78,16 +78,25 @@ class AnalysisService:
         user_id: int,
         page: int = 1,
         size: int = 20,
+        q: str | None = None,
+        verdict: str | None = None,
     ) -> tuple[list[AnalysisSummary], int]:
-        """List user's analyses with pagination, sorted by created_at desc."""
+        """List user's analyses with pagination, optional search and verdict filter."""
         offset = (page - 1) * size
 
-        total_stmt = select(func.count(Analysis.id)).where(Analysis.user_id == user_id)
+        conditions = [Analysis.user_id == user_id]
+        if q and q.strip():
+            term = f"%{q.strip()}%"
+            conditions.append(or_(Analysis.original_name.ilike(term), Analysis.id.ilike(term)))
+        if verdict and verdict.strip() and verdict.upper() != "ALL":
+            conditions.append(Analysis.verdict == verdict.upper())
+
+        total_stmt = select(func.count(Analysis.id)).where(*conditions)
         total = db.execute(total_stmt).scalar() or 0
 
         stmt = (
             select(Analysis)
-            .where(Analysis.user_id == user_id)
+            .where(*conditions)
             .order_by(desc(Analysis.created_at))
             .offset(offset)
             .limit(size)
