@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="6" fill="#04060B"/>
+  <!-- Viewfinder brackets (cobalt) -->
+  <path d="M5 11V7C5 5.89543 5.89543 5 7 5H11" stroke="#1F4DFF" stroke-width="2" stroke-linecap="round"/>
+  <path d="M21 5H25C26.1046 5 27 5.89543 27 7V11" stroke="#1F4DFF" stroke-width="2" stroke-linecap="round"/>
+  <path d="M27 21V25C27 26.1046 26.1046 27 25 27H21" stroke="#1F4DFF" stroke-width="2" stroke-linecap="round"/>
+  <path d="M11 27H7C5.89543 27 5 26.1046 5 25V21" stroke="#1F4DFF" stroke-width="2" stroke-linecap="round"/>
+  <!-- Forensic waveform signal (acid lime) -->
+  <path d="M8 16H11L13 10L16 22L19 12L21 16H24" stroke="#C8FF2E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

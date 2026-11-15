@@ -1,0 +1,66 @@
+@theme {
+  --color-black-950: #04060B;
+  --color-black-900: #080B12;
+  --color-black-800: #0F141E;
+  --color-black-700: #161D2B;
+
+  --color-line: #1B2231;
+  --color-line-strong: #2A3550;
+
+  --color-cobalt-600: #1438BF;
+  --color-cobalt-500: #1F4DFF;
+  --color-cobalt-400: #547AFF;
+  --color-cobalt-300: #8BA3FF;
+
+  --color-lime-400: #C8FF2E;
+  --color-lime-300: #D8FF5E;
+  --color-lime-ink: #0B1200;
+
+  --color-alert-500: #FF4D5E;
+  --color-alert-bg: rgba(255, 77, 94, 0.12);
+
+  --color-text-100: #EEF2FA;
+  --color-text-300: #A9B3C7;
+  --color-text-500: #7886A0;
+
+  --font-display: 'Anybody', sans-serif;
+  --font-sans: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'Martian Mono', monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-cell: 10px;
+}
+
+:root {
+  --black-950: #04060B;
+  --black-900: #080B12;
+  --black-800: #0F141E;
+  --black-700: #161D2B;
+
+  --line: #1B2231;
+  --line-strong: #2A3550;
+
+  --cobalt-600: #1438BF;
+  --cobalt-500: #1F4DFF;
+  --cobalt-400: #547AFF;
+  --cobalt-300: #8BA3FF;
+
+  --lime-400: #C8FF2E;
+  --lime-300: #D8FF5E;
+  --lime-ink: #0B1200;
+
+  --alert-500: #FF4D5E;
+  --alert-bg: rgba(255, 77, 94, 0.12);
+
+  --text-100: #EEF2FA;
+  --text-300: #A9B3C7;
+  --text-500: #7886A0;
+
+  --font-display: 'Anybody', sans-serif;
+  --font-text: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'Martian Mono', monospace;
+
+  --ease-instrument: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --border-hairline: 1px solid var(--line);
+}

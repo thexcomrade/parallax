@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import './tokens.css';
+@import '@fontsource/anybody/index.css';
+@import '@fontsource/anybody/700.css';
+@import '@fontsource/hanken-grotesk/index.css';
+@import '@fontsource/hanken-grotesk/500.css';
+@import '@fontsource/hanken-grotesk/600.css';
+@import '@fontsource/martian-mono/index.css';
+@import '@fontsource/martian-mono/500.css';
+@import '@fontsource/martian-mono/700.css';
+
+/* Baseline Instrument Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--black-950);
+  color: var(--text-100);
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.466;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Accessible Instrument Focus Ring */
+:focus-visible {
+  outline: 2px solid var(--cobalt-500);
+  outline-offset: 2px;
+}
+
+/* Custom Text Selection */
+::selection {
+  background-color: rgba(31, 77, 255, 0.45);
+  color: var(--text-100);
+}
+
+/* Laboratory Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--black-950);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cobalt-500);
+}
+
+/* Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
