@@ -2,216 +2,187 @@
 from pathlib import Path
 import csv
 import random
-import uuid
-import sys
+import shutil
+from datetime import datetime
 
 # ============================================================
-# PARALLAX DATASET PREPARATION
-# Rename + Manifest Generation + Train/Validation/Test Split
+# CONFIGURATION
 # ============================================================
 
-# Project root = folder containing this script
 PROJECT_ROOT = Path(__file__).resolve().parent
+DATASET_ROOT = PROJECT_ROOT / "datasets"
+RAW_ROOT = DATASET_ROOT / "raw"
+MANIFEST_ROOT = DATASET_ROOT / "manifests"
 
-DATASET_DIR = PROJECT_ROOT / "datasets" / "raw"
-OUTPUT_DIR = PROJECT_ROOT / "datasets" / "manifests"
-
-VIDEO_EXTENSIONS = {
-    ".mp4",
-    ".mov",
-    ".avi",
-    ".mkv",
-    ".webm",
-    ".m4v"
-}
+REAL_DIR = RAW_ROOT / "real"
+FAKE_DIR = RAW_ROOT / "fake"
 
 RANDOM_SEED = 42
-
-# Split proportions
 TRAIN_RATIO = 0.70
-VALIDATION_RATIO = 0.15
+VAL_RATIO = 0.15
 TEST_RATIO = 0.15
 
+SUPPORTED_EXTENSIONS = {
+    ".mp4", ".avi", ".mov", ".mkv", ".webm", ".mpeg", ".mpg"
+}
 
-# ============================================================
-# STEP 1: GET VIDEO FILES
-# ============================================================
-
-def get_video_files(folder_name):
-
-    folder = DATASET_DIR / folder_name
-
-    if not folder.exists():
-        raise FileNotFoundError(
-            f"Dataset folder not found: {folder}"
-        )
-
-    files = [
-        file for file in folder.iterdir()
-        if file.is_file()
-        and file.suffix.lower() in VIDEO_EXTENSIONS
-    ]
-
-    return sorted(files, key=lambda f: f.name.lower())
+CSV_FIELDS = [
+    "sample_id",
+    "video_path",
+    "filename",
+    "label",
+    "label_name",
+    "split"
+]
 
 
 # ============================================================
-# STEP 2: SAFE FILE RENAMING
+# VALIDATION
 # ============================================================
 
-def rename_files(folder_name, prefix):
+def validate_directories():
+    for directory in [REAL_DIR, FAKE_DIR]:
+        if not directory.exists():
+            raise FileNotFoundError(
+                f"Dataset directory not found: {directory}"
+            )
 
-    folder = DATASET_DIR / folder_name
-    files = get_video_files(folder_name)
+    if abs(TRAIN_RATIO + VAL_RATIO + TEST_RATIO - 1.0) > 1e-9:
+        raise ValueError("Split ratios must add up to 1.0")
+
+
+def get_video_files(directory):
+    return sorted(
+        [
+            file for file in directory.iterdir()
+            if file.is_file()
+            and file.suffix.lower() in SUPPORTED_EXTENSIONS
+        ],
+        key=lambda x: x.name.lower()
+    )
+
+
+# ============================================================
+# SAFE FILE RENAMING
+# ============================================================
+
+def rename_files(directory, prefix):
+    files = get_video_files(directory)
 
     if not files:
-        print(f"[WARNING] No videos found in {folder_name}")
-        return []
+        raise RuntimeError(f"No videos found in {directory}")
 
-    print(f"\nRenaming {folder_name.upper()} files...")
-    print(f"Found: {len(files)} videos")
+    print(f"\nRenaming {prefix.upper()} files: {len(files)}")
 
-    # Generate unique temporary names first.
-    # This avoids collisions with existing filenames.
-    temp_files = []
+    # First rename everything to temporary names.
+    # This prevents filename collision during renaming.
+    temporary_files = []
 
-    for file in files:
-
-        temp_name = (
-            f"__parallax_tmp_{uuid.uuid4().hex}"
-            f"{file.suffix.lower()}"
+    for index, old_path in enumerate(files, start=1):
+        temp_path = directory / (
+            f"__temporary_{prefix}_{index:05d}{old_path.suffix.lower()}"
         )
 
-        temp_path = folder / temp_name
+        if temp_path.exists():
+            raise FileExistsError(
+                f"Temporary filename already exists: {temp_path}"
+            )
 
-        file.rename(temp_path)
+        old_path.rename(temp_path)
+        temporary_files.append(temp_path)
 
-        temp_files.append((file, temp_path))
-
+    # Rename temporary files to final sequential names.
     renamed_files = []
 
-    try:
+    for index, temp_path in enumerate(temporary_files, start=1):
+        new_name = f"{prefix}_{index:04d}{temp_path.suffix.lower()}"
+        new_path = directory / new_name
 
-        # Apply final sequential filenames
-        for index, (original_path, temp_path) in enumerate(
-            temp_files, start=1
-        ):
+        if new_path.exists():
+            raise FileExistsError(
+                f"Target filename already exists: {new_path}"
+            )
 
-            new_name = f"{prefix}_{index:04d}{temp_path.suffix.lower()}"
-            new_path = folder / new_name
+        temp_path.rename(new_path)
+        renamed_files.append(new_path)
 
-            if new_path.exists():
-                raise FileExistsError(
-                    f"Target filename already exists: {new_path}"
-                )
-
-            temp_path.rename(new_path)
-
-            renamed_files.append(new_path)
-
-            print(f"[RENAMED] {original_path.name} -> {new_name}")
-
-    except Exception:
-
-        print("\n[ERROR] Renaming failed.")
-        print("Attempting to restore original filenames...")
-
-        # Restore already-renamed files and remaining temp files
-        for original_path, temp_path in temp_files:
-
-            current_path = None
-
-            if temp_path.exists():
-                current_path = temp_path
-            else:
-                # Find the final renamed path by matching the
-                # temporary file's extension and its position.
-                position = temp_files.index((original_path, temp_path))
-                candidate = folder / (
-                    f"{prefix}_{position + 1:04d}"
-                    f"{temp_path.suffix.lower()}"
-                )
-
-                if candidate.exists():
-                    current_path = candidate
-
-            if current_path is not None and not original_path.exists():
-                current_path.rename(original_path)
-
-        raise
-
-    print(f"\n[SUCCESS] {folder_name.upper()}: {len(renamed_files)} files")
+    print(f"Successfully renamed {len(renamed_files)} files.")
 
     return renamed_files
 
 
 # ============================================================
-# STEP 3: CREATE DATASET SAMPLE RECORDS
+# DATASET SPLITTING
 # ============================================================
 
-def create_samples(files, prefix, label, class_name):
+def split_class(files, label, label_name):
+    rng = random.Random(RANDOM_SEED + label)
+    files = list(files)
+    rng.shuffle(files)
 
-    samples = []
+    total = len(files)
 
-    for index, file in enumerate(files, start=1):
+    train_count = int(total * TRAIN_RATIO)
+    val_count = int(total * VAL_RATIO)
 
-        relative_path = file.relative_to(PROJECT_ROOT)
+    train_files = files[:train_count]
+    val_files = files[train_count:train_count + val_count]
+    test_files = files[train_count + val_count:]
 
-        samples.append({
-            "sample_id": f"{prefix}_{index:04d}",
-            "filename": file.name,
-            "relative_path": relative_path.as_posix(),
-            "label": label,
-            "class_name": class_name
-        })
+    def create_records(selected_files, split_name):
+        records = []
 
-    return samples
+        for file_path in selected_files:
+            relative_path = file_path.relative_to(PROJECT_ROOT)
 
+            records.append({
+                "sample_id": file_path.stem,
+                "video_path": relative_path.as_posix(),
+                "filename": file_path.name,
+                "label": label,
+                "label_name": label_name,
+                "split": split_name
+            })
 
-# ============================================================
-# STEP 4: SPLIT EACH CLASS
-# ============================================================
+        return records
 
-def split_class(samples, rng):
-
-    samples = samples.copy()
-    rng.shuffle(samples)
-
-    total = len(samples)
-
-    train_end = int(total * TRAIN_RATIO)
-    validation_end = int(
-        total * (TRAIN_RATIO + VALIDATION_RATIO) + 0.5
+    return (
+        create_records(train_files, "train"),
+        create_records(val_files, "validation"),
+        create_records(test_files, "test")
     )
 
-    train = samples[:train_end]
-    validation = samples[train_end:validation_end]
-    test = samples[validation_end:]
-
-    return train, validation, test
-
 
 # ============================================================
-# STEP 5: WRITE CSV FILES
+# CSV BACKUP AND WRITING
 # ============================================================
 
-def write_csv(filename, samples):
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    output_path = OUTPUT_DIR / filename
-
-    fieldnames = [
-        "sample_id",
-        "filename",
-        "relative_path",
-        "label",
-        "class_name",
-        "split"
+def backup_existing_csvs():
+    existing_files = [
+        MANIFEST_ROOT / "train.csv",
+        MANIFEST_ROOT / "validation.csv",
+        MANIFEST_ROOT / "test.csv",
+        MANIFEST_ROOT / "dataset_manifest.csv"
     ]
 
-    with open(
-        output_path,
+    existing_files = [f for f in existing_files if f.exists()]
+
+    if not existing_files:
+        return
+
+    backup_dir = MANIFEST_ROOT / (
+        "backup_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+    )
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    for file_path in existing_files:
+        shutil.copy2(file_path, backup_dir / file_path.name)
+
+    print(f"\nExisting CSV backups saved to: {backup_dir}")
+
+
+def write_csv(file_path, records):
+    with file_path.open(
         "w",
         newline="",
         encoding="utf-8"
@@ -219,174 +190,100 @@ def write_csv(filename, samples):
 
         writer = csv.DictWriter(
             csv_file,
-            fieldnames=fieldnames
+            fieldnames=CSV_FIELDS
         )
 
         writer.writeheader()
-        writer.writerows(samples)
+        writer.writerows(records)
 
-    print(f"[CREATED] {output_path.relative_to(PROJECT_ROOT)}")
+    print(f"Created: {file_path.name} ({len(records)} records)")
 
 
 # ============================================================
-# STEP 6: MAIN DATASET PREPARATION
+# MAIN
 # ============================================================
 
-def prepare_dataset():
-
-    print("\n" + "=" * 60)
-    print("       PARALLAX DATASET PREPARATION")
+def main():
+    print("=" * 60)
+    print("PARALLAX DATASET RENAME & SPLIT")
     print("=" * 60)
 
-    # Check folders before renaming
-    real_files_before = get_video_files("real")
-    fake_files_before = get_video_files("fake")
+    validate_directories()
+    MANIFEST_ROOT.mkdir(parents=True, exist_ok=True)
 
-    if not real_files_before or not fake_files_before:
+    real_files = get_video_files(REAL_DIR)
+    fake_files = get_video_files(FAKE_DIR)
+
+    print(f"\nREAL videos found: {len(real_files)}")
+    print(f"FAKE videos found: {len(fake_files)}")
+
+    if len(real_files) != 500 or len(fake_files) != 500:
         raise ValueError(
-            "Both REAL and FAKE folders must contain videos."
+            "Expected exactly 500 REAL and 500 FAKE videos. "
+            f"Found REAL={len(real_files)}, FAKE={len(fake_files)}. "
+            "No files have been renamed."
         )
 
-    print("\nINITIAL DATASET")
-    print(f"REAL videos: {len(real_files_before)}")
-    print(f"FAKE videos: {len(fake_files_before)}")
-    print(f"TOTAL videos: {len(real_files_before) + len(fake_files_before)}")
+    # Backup old manifests before changing anything.
+    backup_existing_csvs()
 
-    # --------------------------------------------------------
-    # Rename REAL files
-    # --------------------------------------------------------
+    # Rename files.
+    real_files = rename_files(REAL_DIR, "real")
+    fake_files = rename_files(FAKE_DIR, "fake")
 
-    real_files = rename_files("real", "real")
-
-    # --------------------------------------------------------
-    # Rename FAKE files
-    # --------------------------------------------------------
-
-    fake_files = rename_files("fake", "fake")
-
-    # --------------------------------------------------------
-    # Create labelled records
-    # REAL = 0
-    # FAKE = 1
-    # --------------------------------------------------------
-
-    real_samples = create_samples(
-        real_files,
-        "REAL",
-        0,
-        "REAL"
-    )
-
-    fake_samples = create_samples(
-        fake_files,
-        "FAKE",
-        1,
-        "FAKE"
-    )
-
-    # --------------------------------------------------------
-    # Split each class independently
-    # --------------------------------------------------------
-
-    rng = random.Random(RANDOM_SEED)
-
+    # Create stratified splits.
     real_train, real_val, real_test = split_class(
-        real_samples, rng
+        real_files, 0, "REAL"
     )
 
     fake_train, fake_val, fake_test = split_class(
-        fake_samples, rng
+        fake_files, 1, "FAKE"
     )
 
-    splits = {
-        "train": real_train + fake_train,
-        "validation": real_val + fake_val,
-        "test": real_test + fake_test
-    }
+    train_records = real_train + fake_train
+    val_records = real_val + fake_val
+    test_records = real_test + fake_test
 
-    # Shuffle rows inside each split
-    for samples in splits.values():
-        rng.shuffle(samples)
+    # Deterministic shuffle within each split.
+    random.Random(RANDOM_SEED).shuffle(train_records)
+    random.Random(RANDOM_SEED + 1).shuffle(val_records)
+    random.Random(RANDOM_SEED + 2).shuffle(test_records)
 
-    # Add split name to every record
-    for split_name, samples in splits.items():
+    all_records = train_records + val_records + test_records
 
-        for sample in samples:
-            sample["split"] = split_name
+    # Write CSV manifests.
+    write_csv(MANIFEST_ROOT / "train.csv", train_records)
+    write_csv(MANIFEST_ROOT / "validation.csv", val_records)
+    write_csv(MANIFEST_ROOT / "test.csv", test_records)
+    write_csv(MANIFEST_ROOT / "dataset_manifest.csv", all_records)
 
-    # --------------------------------------------------------
-    # Generate complete manifest
-    # --------------------------------------------------------
-
-    all_samples = (
-        splits["train"]
-        + splits["validation"]
-        + splits["test"]
-    )
-
-    write_csv("dataset_manifest.csv", all_samples)
-
-    # --------------------------------------------------------
-    # Generate individual CSV files
-    # --------------------------------------------------------
-
-    write_csv("train.csv", splits["train"])
-    write_csv("validation.csv", splits["validation"])
-    write_csv("test.csv", splits["test"])
-
-    # --------------------------------------------------------
-    # Print final summary
-    # --------------------------------------------------------
-
+    # Final verification.
     print("\n" + "=" * 60)
-    print("           FINAL DATASET SUMMARY")
+    print("FINAL DATASET SUMMARY")
     print("=" * 60)
 
-    for split_name, samples in splits.items():
+    for split_name, records in [
+        ("TRAIN", train_records),
+        ("VALIDATION", val_records),
+        ("TEST", test_records)
+    ]:
+        real_count = sum(r["label"] == 0 for r in records)
+        fake_count = sum(r["label"] == 1 for r in records)
 
-        real_count = sum(
-            sample["label"] == 0 for sample in samples
+        print(
+            f"{split_name:12} | "
+            f"REAL: {real_count:3} | "
+            f"FAKE: {fake_count:3} | "
+            f"TOTAL: {len(records):3}"
         )
 
-        fake_count = sum(
-            sample["label"] == 1 for sample in samples
-        )
-
-        print(f"\n{split_name.upper()}")
-        print("-" * 35)
-        print(f"REAL:  {real_count}")
-        print(f"FAKE:  {fake_count}")
-        print(f"TOTAL: {len(samples)}")
-
-    print("\n" + "=" * 60)
-    print("DATASET PREPARATION COMPLETED")
+    print("-" * 60)
+    print(f"TOTAL VIDEOS: {len(all_records)}")
+    print("RENAME STATUS: SUCCESS")
+    print("SPLIT STATUS: SUCCESS")
+    print("CSV STATUS: UPDATED")
     print("=" * 60)
 
-    print(f"REAL videos: {len(real_files)}")
-    print(f"FAKE videos: {len(fake_files)}")
-    print(f"TOTAL: {len(all_samples)}")
-
-    print("\nGenerated files:")
-    print("1. dataset_manifest.csv")
-    print("2. train.csv")
-    print("3. validation.csv")
-    print("4. test.csv")
-
-    print("\nDataset location:", DATASET_DIR)
-    print("Manifest location:", OUTPUT_DIR)
-
-
-# ============================================================
-# ENTRY POINT
-# ============================================================
 
 if __name__ == "__main__":
-
-    try:
-        prepare_dataset()
-
-    except Exception as error:
-
-        print("\n[FAILED]")
-        print(error)
-        sys.exit(1)
+    main()
