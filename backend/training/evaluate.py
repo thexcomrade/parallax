@@ -32,7 +32,7 @@ def compute_metrics(
     y_scores: list[float],
     threshold: float = 0.5,
 ) -> dict[str, Any]:
-    """Compute Accuracy, Precision, Recall, F1, AUC, and Confusion Matrix."""
+    """Compute Accuracy, Precision, Recall, F1, AUC, Balanced Accuracy, and Confusion Matrix."""
     if not y_true:
         return {
             "accuracy": 0.0,
@@ -40,7 +40,16 @@ def compute_metrics(
             "recall": 0.0,
             "f1": 0.0,
             "auc": 0.5,
+            "balanced_accuracy": 0.5,
             "confusion_matrix": [[0, 0], [0, 0]],
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0,
+            "real_precision": 0.0,
+            "real_recall": 0.0,
+            "fake_precision": 0.0,
+            "fake_recall": 0.0,
             "total_samples": 0,
         }
 
@@ -57,12 +66,18 @@ def compute_metrics(
     recall = tp / max(1, tp + fn)
     f1 = 2 * (precision * recall) / max(1e-8, precision + recall)
 
+    real_precision = tn / max(1, tn + fn)
+    real_recall = tn / max(1, tn + fp)
+    fake_precision = precision
+    fake_recall = recall
+    balanced_accuracy = 0.5 * (real_recall + fake_recall)
+
     # AUC calculation
     if len(set(y_true)) < 2:
         auc = 0.5
     else:
         try:
-            from sklearn.metrics import roc_auc_score
+            from sklearn.metrics import roc_auc_score  # type: ignore[import-untyped]
 
             auc = float(roc_auc_score(y_true, y_scores))
         except Exception:
@@ -83,9 +98,51 @@ def compute_metrics(
         "recall": round(recall, 4),
         "f1": round(f1, 4),
         "auc": round(auc, 4),
+        "balanced_accuracy": round(balanced_accuracy, 4),
         "confusion_matrix": [[tn, fp], [fn, tp]],
+        "tp": tp,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "real_precision": round(real_precision, 4),
+        "real_recall": round(real_recall, 4),
+        "fake_precision": round(fake_precision, 4),
+        "fake_recall": round(fake_recall, 4),
         "total_samples": total,
     }
+
+
+def forward_video_only(
+    model: AVT2DWF,
+    video_windows: Tensor,
+) -> Tensor:
+    """Video-only ablation forward pass."""
+    B, K, _T, _C, _H, _W = video_windows.shape
+    video_flat = video_windows.reshape(B * K, _T, _C, _H, _W)
+    V_flat, _ = model.face_encoder(video_flat)
+    V_clip = V_flat.reshape(B, K, -1).mean(dim=1)  # [B, 256]
+    if model.auxiliary_heads and model.video_classifier is not None:
+        logits_raw: Tensor = model.video_classifier(V_clip)
+    else:
+        logits_raw = model.classifier(V_clip)
+    temperature = model.log_temperature.exp().clamp(min=0.5, max=5.0)
+    res: Tensor = logits_raw / temperature
+    return res
+
+
+def forward_audio_only(
+    model: AVT2DWF,
+    audio_segments: Tensor,
+) -> Tensor:
+    """Audio-only ablation forward pass."""
+    A_clip, _ = model.audio_encoder(audio_segments)  # [B, 256]
+    if model.auxiliary_heads and model.audio_classifier is not None:
+        logits_raw: Tensor = model.audio_classifier(A_clip)
+    else:
+        logits_raw = model.classifier(A_clip)
+    temperature = model.log_temperature.exp().clamp(min=0.5, max=5.0)
+    res: Tensor = logits_raw / temperature
+    return res
 
 
 def forward_static_fusion(
@@ -120,6 +177,202 @@ def forward_static_fusion(
     temperature = model.log_temperature.exp().clamp(min=0.5, max=5.0)
     logits: Tensor = logits_raw / temperature
     return logits
+
+
+def run_comprehensive_evaluation(
+    model: AVT2DWF,
+    loader: DataLoader[dict[str, Any]],
+    device: torch.device,
+) -> dict[str, Any]:
+    """Run full evaluation suite across a DataLoader.
+
+    Computes:
+    - Multimodal DWF predictions, probabilities, and metrics
+    - Video-only ablation predictions and metrics
+    - Audio-only ablation predictions and metrics
+    - Static 50/50 fusion ablation predictions and metrics
+    - Per-sample predictions (including w_a, w_v, sync score, error type)
+    - DWF weights and sync score statistics (overall, real, fake)
+    - Full list of False Positives and False Negatives
+    """
+    import math
+
+    model.eval()
+
+    sample_records: list[dict[str, Any]] = []
+    y_true: list[int] = []
+    y_scores_multimodal: list[float] = []
+    y_scores_video: list[float] = []
+    y_scores_audio: list[float] = []
+    y_scores_static: list[float] = []
+
+    wa_all: list[float] = []
+    wv_all: list[float] = []
+    sync_all: list[float] = []
+
+    wa_real: list[float] = []
+    wv_real: list[float] = []
+    wa_fake: list[float] = []
+    wv_fake: list[float] = []
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+
+    with torch.no_grad():
+        for batch in loader:
+            video_windows = batch["video_windows"].to(device)
+            audio_segments = batch["audio_segments"].to(device)
+            audio_mask = batch["audio_mask"].to(device)
+            labels: Tensor = batch["labels"]
+            clip_paths: list[str] = batch["clip_paths"]
+            sample_ids: list[str] = batch.get(
+                "sample_ids", [Path(p).stem for p in clip_paths]
+            )
+
+            # 1. Full multimodal DWF
+            out: AVT2Result = model(video_windows, audio_segments, audio_mask)
+            p_fake_batch = F.softmax(out.logits, dim=-1)[:, 1].cpu().tolist()
+
+            # Flatten weights and sync scores
+            wa_batch = [float(x) for x in out.w_a.view(-1).cpu().tolist()]
+            wv_batch = [float(x) for x in out.w_v.view(-1).cpu().tolist()]
+            if out.sync_score.ndim == 0:
+                sc_val = float(out.sync_score.item())
+                sync_batch = [sc_val] * len(sample_ids)
+            else:
+                sync_batch = [float(x) for x in out.sync_score.view(-1).cpu().tolist()]
+
+            # 2. Video-only ablation
+            v_logits = forward_video_only(model, video_windows)
+            p_fake_v = F.softmax(v_logits, dim=-1)[:, 1].cpu().tolist()
+
+            # 3. Audio-only ablation
+            a_logits = forward_audio_only(model, audio_segments)
+            p_fake_a = F.softmax(a_logits, dim=-1)[:, 1].cpu().tolist()
+
+            # 4. Static 50/50 fusion ablation
+            s_logits = forward_static_fusion(
+                model, video_windows, audio_segments, audio_mask
+            )
+            p_fake_s = F.softmax(s_logits, dim=-1)[:, 1].cpu().tolist()
+
+            labels_list = labels.cpu().tolist()
+            y_true.extend(labels_list)
+            y_scores_multimodal.extend(p_fake_batch)
+            y_scores_video.extend(p_fake_v)
+            y_scores_audio.extend(p_fake_a)
+            y_scores_static.extend(p_fake_s)
+
+            wa_all.extend(wa_batch)
+            wv_all.extend(wv_batch)
+            sync_all.extend(sync_batch)
+
+            for sid, cp, y, pf, wa, wv, sc in zip(
+                sample_ids,
+                clip_paths,
+                labels_list,
+                p_fake_batch,
+                wa_batch,
+                wv_batch,
+                sync_batch,
+                strict=False,
+            ):
+                if y == 0:
+                    wa_real.append(float(wa))
+                    wv_real.append(float(wv))
+                else:
+                    wa_fake.append(float(wa))
+                    wv_fake.append(float(wv))
+
+                pred_lbl = 1 if pf >= 0.5 else 0
+                is_corr = bool(pred_lbl == y)
+                err_type = "None"
+                if not is_corr:
+                    err_type = (
+                        "False Positive (FP)"
+                        if pred_lbl == 1 and y == 0
+                        else "False Negative (FN)"
+                    )
+
+                try:
+                    rel_path = str(Path(cp).relative_to(repo_root)).replace("\\", "/")
+                except Exception:
+                    rel_path = str(cp).replace("\\", "/")
+
+                sample_records.append(
+                    {
+                        "sample_id": sid,
+                        "filename": Path(cp).name,
+                        "relative_path": rel_path,
+                        "true_label": int(y),
+                        "true_class": "FAKE" if y == 1 else "REAL",
+                        "pred_label": int(pred_lbl),
+                        "pred_class": "FAKE" if pred_lbl == 1 else "REAL",
+                        "p_fake": round(float(pf), 6),
+                        "p_real": round(float(1.0 - pf), 6),
+                        "w_a": round(float(wa), 6),
+                        "w_v": round(float(wv), 6),
+                        "sync_score": round(float(sc), 6),
+                        "is_correct": is_corr,
+                        "error_type": err_type,
+                    }
+                )
+
+    metrics_multimodal = compute_metrics(y_true, y_scores_multimodal)
+    metrics_video = compute_metrics(y_true, y_scores_video)
+    metrics_audio = compute_metrics(y_true, y_scores_audio)
+    metrics_static = compute_metrics(y_true, y_scores_static)
+
+    def stats(vals: list[float]) -> dict[str, float]:
+        if not vals:
+            return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0}
+        m = sum(vals) / len(vals)
+        variance = sum((x - m) ** 2 for x in vals) / max(1, len(vals))
+        return {
+            "mean": round(m, 4),
+            "std": round(math.sqrt(variance), 4),
+            "min": round(min(vals), 4),
+            "max": round(max(vals), 4),
+        }
+
+    false_positives = [
+        r for r in sample_records if r["error_type"] == "False Positive (FP)"
+    ]
+    false_negatives = [
+        r for r in sample_records if r["error_type"] == "False Negative (FN)"
+    ]
+
+    return {
+        "metrics_multimodal": metrics_multimodal,
+        "metrics_video_only": metrics_video,
+        "metrics_audio_only": metrics_audio,
+        "metrics_static_fusion": metrics_static,
+        "sample_records": sample_records,
+        "dwf_diagnostics": {
+            "audio_weight_wa": stats(wa_all),
+            "video_weight_wv": stats(wv_all),
+            "real_class_wa": stats(wa_real),
+            "real_class_wv": stats(wv_real),
+            "fake_class_wa": stats(wa_fake),
+            "fake_class_wv": stats(wv_fake),
+            "sync_score": stats(sync_all),
+            "dwf_gain_over_static_auc": round(
+                float(metrics_multimodal["auc"]) - float(metrics_static["auc"]), 4
+            ),
+            "dwf_gain_over_video_only_auc": round(
+                float(metrics_multimodal["auc"]) - float(metrics_video["auc"]), 4
+            ),
+            "dwf_gain_over_audio_only_auc": round(
+                float(metrics_multimodal["auc"]) - float(metrics_audio["auc"]), 4
+            ),
+        },
+        "failure_analysis": {
+            "total_errors": len(false_positives) + len(false_negatives),
+            "false_positive_count": len(false_positives),
+            "false_negative_count": len(false_negatives),
+            "false_positives": false_positives,
+            "false_negatives": false_negatives,
+        },
+    }
 
 
 def run_evaluation(

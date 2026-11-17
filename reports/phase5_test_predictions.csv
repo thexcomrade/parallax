@@ -1,0 +1,75 @@
+sample_id,filename,relative_path,true_label,true_class,pred_label,pred_class,p_fake,p_real,w_a,w_v,sync_score,is_correct,error_type
+REAL_0229,real_0229.mp4,datasets/raw/real/real_0229.mp4,0,REAL,1,FAKE,0.999587,0.000413,0.009479,0.990521,-0.020895,False,False Positive (FP)
+REAL_0071,real_0071.mp4,datasets/raw/real/real_0071.mp4,0,REAL,0,REAL,0.033172,0.966828,0.000349,0.999651,-0.020895,True,None
+FAKE_0026,fake_0026.mp4,datasets/raw/fake/fake_0026.mp4,1,FAKE,1,FAKE,0.999988,1.2e-05,0.016962,0.983038,0.045884,True,None
+REAL_0144,real_0144.mp4,datasets/raw/real/real_0144.mp4,0,REAL,0,REAL,0.207076,0.792924,0.000124,0.999876,0.045884,True,None
+FAKE_0168,fake_0168.mp4,datasets/raw/fake/fake_0168.mp4,1,FAKE,1,FAKE,0.999532,0.000468,0.004594,0.995407,0.080807,True,None
+FAKE_0047,fake_0047.mp4,datasets/raw/fake/fake_0047.mp4,1,FAKE,1,FAKE,0.99999,1e-05,0.002556,0.997444,0.080807,True,None
+FAKE_0238,fake_0238.mp4,datasets/raw/fake/fake_0238.mp4,1,FAKE,1,FAKE,0.933892,0.066108,0.002251,0.997749,0.099296,True,None
+FAKE_0106,fake_0106.mp4,datasets/raw/fake/fake_0106.mp4,1,FAKE,1,FAKE,0.999954,4.6e-05,0.010603,0.989397,0.099296,True,None
+FAKE_0119,fake_0119.mp4,datasets/raw/fake/fake_0119.mp4,1,FAKE,1,FAKE,0.958335,0.041665,0.00328,0.99672,0.022346,True,None
+REAL_0155,real_0155.mp4,datasets/raw/real/real_0155.mp4,0,REAL,0,REAL,0.136004,0.863996,0.000184,0.999816,0.022346,True,None
+REAL_0108,real_0108.mp4,datasets/raw/real/real_0108.mp4,0,REAL,1,FAKE,0.881381,0.118619,0.000814,0.999186,0.061576,False,False Positive (FP)
+REAL_0237,real_0237.mp4,datasets/raw/real/real_0237.mp4,0,REAL,1,FAKE,0.999595,0.000405,0.011739,0.988262,0.061576,False,False Positive (FP)
+FAKE_0120,fake_0120.mp4,datasets/raw/fake/fake_0120.mp4,1,FAKE,1,FAKE,0.99995,5e-05,0.008041,0.991959,0.075017,True,None
+REAL_0152,real_0152.mp4,datasets/raw/real/real_0152.mp4,0,REAL,1,FAKE,0.545091,0.454909,0.000767,0.999233,0.075017,False,False Positive (FP)
+REAL_0072,real_0072.mp4,datasets/raw/real/real_0072.mp4,0,REAL,0,REAL,0.108781,0.891219,0.002204,0.997796,-0.02833,True,None
+FAKE_0221,fake_0221.mp4,datasets/raw/fake/fake_0221.mp4,1,FAKE,1,FAKE,0.980598,0.019402,0.001953,0.998047,-0.02833,True,None
+REAL_0060,real_0060.mp4,datasets/raw/real/real_0060.mp4,0,REAL,1,FAKE,0.994619,0.005381,0.002425,0.997575,0.126417,False,False Positive (FP)
+REAL_0164,real_0164.mp4,datasets/raw/real/real_0164.mp4,0,REAL,1,FAKE,0.999943,5.7e-05,0.002926,0.997074,0.126417,False,False Positive (FP)
+FAKE_0248,fake_0248.mp4,datasets/raw/fake/fake_0248.mp4,1,FAKE,1,FAKE,0.999886,0.000114,0.008771,0.991229,0.049889,True,None
+REAL_0167,real_0167.mp4,datasets/raw/real/real_0167.mp4,0,REAL,0,REAL,0.108923,0.891077,5.5e-05,0.999945,0.049889,True,None
+FAKE_0064,fake_0064.mp4,datasets/raw/fake/fake_0064.mp4,1,FAKE,0,REAL,0.193358,0.806642,0.000138,0.999862,0.086005,False,False Negative (FN)
+FAKE_0187,fake_0187.mp4,datasets/raw/fake/fake_0187.mp4,1,FAKE,1,FAKE,0.999982,1.8e-05,0.008798,0.991202,0.086005,True,None
+FAKE_0091,fake_0091.mp4,datasets/raw/fake/fake_0091.mp4,1,FAKE,1,FAKE,0.918204,0.081796,0.00035,0.99965,0.132069,True,None
+REAL_0247,real_0247.mp4,datasets/raw/real/real_0247.mp4,0,REAL,1,FAKE,0.993672,0.006328,0.002839,0.997161,0.132069,False,False Positive (FP)
+FAKE_0025,fake_0025.mp4,datasets/raw/fake/fake_0025.mp4,1,FAKE,1,FAKE,0.915573,0.084427,0.00025,0.99975,0.055931,True,None
+FAKE_0173,fake_0173.mp4,datasets/raw/fake/fake_0173.mp4,1,FAKE,1,FAKE,0.999991,9e-06,0.009859,0.990141,0.055931,True,None
+REAL_0029,real_0029.mp4,datasets/raw/real/real_0029.mp4,0,REAL,0,REAL,0.074351,0.925649,4.7e-05,0.999954,-0.013508,True,None
+FAKE_0087,fake_0087.mp4,datasets/raw/fake/fake_0087.mp4,1,FAKE,0,REAL,0.478509,0.521491,0.002021,0.997979,-0.013508,False,False Negative (FN)
+FAKE_0222,fake_0222.mp4,datasets/raw/fake/fake_0222.mp4,1,FAKE,1,FAKE,0.999989,1.1e-05,0.004642,0.995358,0.145091,True,None
+REAL_0140,real_0140.mp4,datasets/raw/real/real_0140.mp4,0,REAL,1,FAKE,0.997428,0.002572,0.005266,0.994734,0.145091,False,False Positive (FP)
+REAL_0063,real_0063.mp4,datasets/raw/real/real_0063.mp4,0,REAL,1,FAKE,0.994696,0.005304,0.000254,0.999746,0.086379,False,False Positive (FP)
+REAL_0009,real_0009.mp4,datasets/raw/real/real_0009.mp4,0,REAL,1,FAKE,0.992539,0.007461,0.00171,0.99829,0.086379,False,False Positive (FP)
+FAKE_0247,fake_0247.mp4,datasets/raw/fake/fake_0247.mp4,1,FAKE,1,FAKE,0.993646,0.006354,0.003643,0.996357,0.040902,True,None
+REAL_0115,real_0115.mp4,datasets/raw/real/real_0115.mp4,0,REAL,0,REAL,0.04765,0.95235,0.00157,0.99843,0.040902,True,None
+FAKE_0028,fake_0028.mp4,datasets/raw/fake/fake_0028.mp4,1,FAKE,1,FAKE,0.999987,1.3e-05,0.017456,0.982544,0.149197,True,None
+FAKE_0205,fake_0205.mp4,datasets/raw/fake/fake_0205.mp4,1,FAKE,1,FAKE,0.999992,8e-06,0.012639,0.987361,0.149197,True,None
+REAL_0024,real_0024.mp4,datasets/raw/real/real_0024.mp4,0,REAL,0,REAL,0.151756,0.848244,0.00011,0.99989,-0.020248,True,None
+FAKE_0109,fake_0109.mp4,datasets/raw/fake/fake_0109.mp4,1,FAKE,0,REAL,0.127612,0.872388,0.002566,0.997434,-0.020248,False,False Negative (FN)
+FAKE_0050,fake_0050.mp4,datasets/raw/fake/fake_0050.mp4,1,FAKE,1,FAKE,0.988285,0.011715,0.002038,0.997962,-0.042892,True,None
+REAL_0007,real_0007.mp4,datasets/raw/real/real_0007.mp4,0,REAL,0,REAL,0.048457,0.951543,0.000204,0.999796,-0.042892,True,None
+REAL_0180,real_0180.mp4,datasets/raw/real/real_0180.mp4,0,REAL,1,FAKE,0.98963,0.01037,0.0011,0.9989,0.121249,False,False Positive (FP)
+FAKE_0049,fake_0049.mp4,datasets/raw/fake/fake_0049.mp4,1,FAKE,1,FAKE,0.999974,2.6e-05,0.018201,0.981799,0.121249,True,None
+FAKE_0207,fake_0207.mp4,datasets/raw/fake/fake_0207.mp4,1,FAKE,1,FAKE,0.980809,0.019191,0.000745,0.999255,0.090623,True,None
+FAKE_0242,fake_0242.mp4,datasets/raw/fake/fake_0242.mp4,1,FAKE,1,FAKE,0.999807,0.000193,0.002243,0.997757,0.090623,True,None
+FAKE_0020,fake_0020.mp4,datasets/raw/fake/fake_0020.mp4,1,FAKE,1,FAKE,0.994938,0.005062,0.002907,0.997093,0.126503,True,None
+FAKE_0072,fake_0072.mp4,datasets/raw/fake/fake_0072.mp4,1,FAKE,1,FAKE,0.9998,0.0002,0.010359,0.989641,0.126503,True,None
+REAL_0056,real_0056.mp4,datasets/raw/real/real_0056.mp4,0,REAL,0,REAL,0.03801,0.96199,0.000305,0.999695,0.023989,True,None
+FAKE_0016,fake_0016.mp4,datasets/raw/fake/fake_0016.mp4,1,FAKE,1,FAKE,0.999895,0.000105,0.009953,0.990047,0.023989,True,None
+FAKE_0036,fake_0036.mp4,datasets/raw/fake/fake_0036.mp4,1,FAKE,1,FAKE,0.999923,7.7e-05,0.007292,0.992708,0.039859,True,None
+REAL_0057,real_0057.mp4,datasets/raw/real/real_0057.mp4,0,REAL,0,REAL,0.072497,0.927503,0.000199,0.999801,0.039859,True,None
+REAL_0036,real_0036.mp4,datasets/raw/real/real_0036.mp4,0,REAL,1,FAKE,0.995619,0.004381,0.000668,0.999332,0.121708,False,False Positive (FP)
+FAKE_0014,fake_0014.mp4,datasets/raw/fake/fake_0014.mp4,1,FAKE,1,FAKE,0.999989,1.1e-05,0.010315,0.989685,0.121708,True,None
+FAKE_0104,fake_0104.mp4,datasets/raw/fake/fake_0104.mp4,1,FAKE,1,FAKE,0.998858,0.001142,0.005907,0.994093,0.110573,True,None
+FAKE_0138,fake_0138.mp4,datasets/raw/fake/fake_0138.mp4,1,FAKE,1,FAKE,0.999977,2.3e-05,0.012288,0.987712,0.110573,True,None
+FAKE_0166,fake_0166.mp4,datasets/raw/fake/fake_0166.mp4,1,FAKE,0,REAL,0.226273,0.773727,6.3e-05,0.999937,0.04816,False,False Negative (FN)
+REAL_0130,real_0130.mp4,datasets/raw/real/real_0130.mp4,0,REAL,1,FAKE,0.999534,0.000466,0.008864,0.991136,0.04816,False,False Positive (FP)
+REAL_0151,real_0151.mp4,datasets/raw/real/real_0151.mp4,0,REAL,0,REAL,0.095817,0.904183,0.000163,0.999837,-0.053899,True,None
+REAL_0008,real_0008.mp4,datasets/raw/real/real_0008.mp4,0,REAL,0,REAL,0.306092,0.693908,0.000818,0.999182,-0.053899,True,None
+FAKE_0111,fake_0111.mp4,datasets/raw/fake/fake_0111.mp4,1,FAKE,1,FAKE,0.999958,4.2e-05,0.00629,0.99371,0.120876,True,None
+FAKE_0225,fake_0225.mp4,datasets/raw/fake/fake_0225.mp4,1,FAKE,1,FAKE,0.999946,5.4e-05,0.004002,0.995998,0.120876,True,None
+FAKE_0115,fake_0115.mp4,datasets/raw/fake/fake_0115.mp4,1,FAKE,1,FAKE,0.9996,0.0004,0.005894,0.994106,0.071132,True,None
+REAL_0189,real_0189.mp4,datasets/raw/real/real_0189.mp4,0,REAL,0,REAL,0.121903,0.878097,8.5e-05,0.999915,0.071132,True,None
+FAKE_0105,fake_0105.mp4,datasets/raw/fake/fake_0105.mp4,1,FAKE,1,FAKE,0.999917,8.3e-05,0.008293,0.991706,0.014723,True,None
+REAL_0208,real_0208.mp4,datasets/raw/real/real_0208.mp4,0,REAL,0,REAL,0.116514,0.883486,0.000359,0.999641,0.014723,True,None
+FAKE_0169,fake_0169.mp4,datasets/raw/fake/fake_0169.mp4,1,FAKE,0,REAL,0.121362,0.878638,4.6e-05,0.999954,-0.015122,False,False Negative (FN)
+REAL_0184,real_0184.mp4,datasets/raw/real/real_0184.mp4,0,REAL,1,FAKE,0.920427,0.079573,0.000821,0.999179,-0.015122,False,False Positive (FP)
+REAL_0023,real_0023.mp4,datasets/raw/real/real_0023.mp4,0,REAL,1,FAKE,0.998143,0.001857,0.004891,0.995109,0.136019,False,False Positive (FP)
+REAL_0058,real_0058.mp4,datasets/raw/real/real_0058.mp4,0,REAL,1,FAKE,0.995494,0.004506,0.008318,0.991682,0.136019,False,False Positive (FP)
+REAL_0109,real_0109.mp4,datasets/raw/real/real_0109.mp4,0,REAL,0,REAL,0.190234,0.809766,0.000211,0.999789,0.029141,True,None
+REAL_0051,real_0051.mp4,datasets/raw/real/real_0051.mp4,0,REAL,1,FAKE,0.666851,0.333149,0.004127,0.995873,0.029141,False,False Positive (FP)
+REAL_0190,real_0190.mp4,datasets/raw/real/real_0190.mp4,0,REAL,0,REAL,0.416409,0.583591,0.000354,0.999646,0.035579,True,None
+REAL_0027,real_0027.mp4,datasets/raw/real/real_0027.mp4,0,REAL,0,REAL,0.420839,0.579161,0.002938,0.997062,0.035579,True,None
+REAL_0174,real_0174.mp4,datasets/raw/real/real_0174.mp4,0,REAL,0,REAL,0.113911,0.886089,0.000147,0.999853,0.02222,True,None
+REAL_0248,real_0248.mp4,datasets/raw/real/real_0248.mp4,0,REAL,1,FAKE,0.592553,0.407447,0.000183,0.999817,0.02222,False,False Positive (FP)

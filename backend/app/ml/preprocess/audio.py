@@ -8,7 +8,7 @@ from pathlib import Path
 
 import librosa
 import numpy as np
-import soundfile as sf
+import soundfile as sf  # type: ignore[import-untyped]
 import torch
 
 from app.core.errors import AppException

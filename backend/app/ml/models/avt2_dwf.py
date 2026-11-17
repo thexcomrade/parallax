@@ -98,12 +98,12 @@ class AVT2DWF(nn.Module):
             if isinstance(layer, nn.Linear):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
-        if self.audio_classifier is not None:
+        if isinstance(self.audio_classifier, nn.Sequential):
             for layer in self.audio_classifier:
                 if isinstance(layer, nn.Linear):
                     nn.init.xavier_uniform_(layer.weight)
                     nn.init.zeros_(layer.bias)
-        if self.video_classifier is not None:
+        if isinstance(self.video_classifier, nn.Sequential):
             for layer in self.video_classifier:
                 if isinstance(layer, nn.Linear):
                     nn.init.xavier_uniform_(layer.weight)
@@ -160,7 +160,11 @@ class AVT2DWF(nn.Module):
         # Auxiliary unimodal logits
         audio_logits: Tensor | None = None
         video_logits: Tensor | None = None
-        if self.auxiliary_heads and self.audio_classifier is not None and self.video_classifier is not None:
+        if (
+            self.auxiliary_heads
+            and self.audio_classifier is not None
+            and self.video_classifier is not None
+        ):
             audio_logits = self.audio_classifier(A_clip) / temperature
             video_logits = self.video_classifier(V_clip) / temperature
 

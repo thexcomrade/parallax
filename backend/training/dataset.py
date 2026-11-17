@@ -161,6 +161,7 @@ class MultimodalDataset(Dataset[dict[str, Any]]):
             "label": label,
             "identity": identity,
             "clip_path": str(clip_path),
+            "sample_id": sample_id,
         }
 
     def get_labels(self) -> list[int]:
@@ -185,6 +186,7 @@ def multimodal_collate_fn(batch: list[dict[str, Any]]) -> dict[str, Any]:
     labels = torch.tensor([b["label"] for b in batch], dtype=torch.long)
     identities = [str(b["identity"]) for b in batch]
     clip_paths = [str(b["clip_path"]) for b in batch]
+    sample_ids = [str(b.get("sample_id", Path(b["clip_path"]).stem)) for b in batch]
 
     return {
         "video_windows": video_windows,
@@ -193,6 +195,7 @@ def multimodal_collate_fn(batch: list[dict[str, Any]]) -> dict[str, Any]:
         "labels": labels,
         "identities": identities,
         "clip_paths": clip_paths,
+        "sample_ids": sample_ids,
     }
 
 
