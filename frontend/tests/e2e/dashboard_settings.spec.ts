@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-test.describe('Phase 9: Dashboard, Model Card & Settings', () => {
+test.describe('Dashboard & Settings', () => {
   const testPassword = 'SecureMasterPassword2026!';
 
   test.beforeEach(async ({ page }) => {
@@ -19,14 +19,12 @@ test.describe('Phase 9: Dashboard, Model Card & Settings', () => {
     page,
   }) => {
     await page.goto('/app');
-    await expect(page.locator('h1')).toContainText('Forensic Command Bench');
+    await expect(page.locator('h1')).toContainText('Forensic Command Overview');
 
     // Verify key bento instrumentation cells
-    await expect(page.getByText('MEDIA INGEST // WORKBENCH')).toBeVisible();
-    await expect(page.getByText('TOTAL ANALYSES')).toBeVisible();
-    await expect(page.getByText('VERDICT DISTRIBUTION')).toBeVisible();
-    await expect(page.getByText('DYNAMIC WEIGHT FUSION (AVT²-DWF)')).toBeVisible();
-    await expect(page.getByText('ENGINE TELEMETRY')).toBeVisible();
+    await expect(page.getByText('Media Ingestion Workbench')).toBeVisible();
+    await expect(page.getByText('Total Analyses')).toBeVisible();
+    await expect(page.getByText('Inference Engine')).toBeVisible();
 
     // Verify horizontal overflow
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -46,48 +44,15 @@ test.describe('Phase 9: Dashboard, Model Card & Settings', () => {
     });
   });
 
-  test('Model Card renders architecture specs, separate claimed vs live metrics, and passes a11y', async ({
-    page,
-  }) => {
-    await page.goto('/app/model');
-    await expect(page.locator('h1')).toContainText('AVT²-DWF Architecture & Model Card');
-
-    // Verify architecture sections
-    await expect(page.getByText('BRANCH 1 // SPATIAL-TEMPORAL FACE TRANSFORMER')).toBeVisible();
-    await expect(page.getByText('BRANCH 2 // SPECTRAL AUDIO TRANSFORMER')).toBeVisible();
-    await expect(page.getByText('FUSION // DYNAMIC WEIGHT FUSION (DWF)')).toBeVisible();
-
-    // Verify separate claimed vs live metrics
-    await expect(page.getByText('PROJECT REPORT CLAIMS')).toBeVisible();
-    await expect(page.getByText('LIVE REPO CHECKPOINT')).toBeVisible();
-
-    // Verify no horizontal overflow
-    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
-
-    // Axe audit
-    const axeResults = await new AxeBuilder({ page }).analyze();
-    expect(axeResults.violations).toEqual([]);
-
-    // Screenshot
-    const viewport = page.viewportSize();
-    const width = viewport ? viewport.width : 1280;
-    await page.screenshot({
-      path: `test-results/screenshots/phase9-model-${width}px.png`,
-      fullPage: true,
-    });
-  });
-
   test('Settings renders profile, password change, accessible purge dialog with focus trap', async ({
     page,
   }) => {
     await page.goto('/app/settings');
-    await expect(page.locator('h1')).toContainText('Analyst Account Settings');
+    await expect(page.locator('h1')).toContainText('Analyst Account & Security');
 
     // Verify operator profile
-    await expect(page.getByText('OPERATOR PROFILE // CREDENTIALS')).toBeVisible();
-    await expect(page.getByRole('button', { name: /UPDATE OPERATOR PASSWORD/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Operator Identity' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /UPDATE MASTER CREDENTIALS/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /SIGN OUT EVERYWHERE/i })).toBeVisible();
 
     // Open confirmation dialog

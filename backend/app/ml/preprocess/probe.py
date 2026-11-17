@@ -35,7 +35,11 @@ class ProbeResult:
     audio_codec: str | None
 
 
-def probe_media(file_path: Path | str, timeout_s: float = 15.0) -> ProbeResult:
+def probe_media(
+    file_path: Path | str,
+    timeout_s: float = 15.0,
+    max_duration_s: float | None = None,
+) -> ProbeResult:
     """Probe video file using ffprobe.
 
     Enforces duration, file size, and resolution caps from README §5.
@@ -129,9 +133,12 @@ def probe_media(file_path: Path | str, timeout_s: float = 15.0) -> ProbeResult:
     if duration_s <= 0.0:
         raise CorruptMediaError("Unable to determine valid positive stream duration")
 
-    if duration_s > settings.MAX_DURATION_S:
+    eff_max_duration = (
+        max_duration_s if max_duration_s is not None else float(settings.MAX_DURATION_S)
+    )
+    if eff_max_duration > 0 and duration_s > eff_max_duration:
         raise MediaLimitsExceededError(
-            f"Duration {duration_s:.1f}s exceeds maximum limit of {settings.MAX_DURATION_S}s"
+            f"Duration {duration_s:.1f}s exceeds maximum limit of {eff_max_duration:.1f}s"
         )
 
     # Extract FPS

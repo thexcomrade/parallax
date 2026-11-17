@@ -1,0 +1,110 @@
+{
+  "status": "COMPLETED",
+  "total_manifest_samples": 500,
+  "preprocessed_new": 496,
+  "skipped_existing": 4,
+  "failed_count": 0,
+  "failures": [],
+  "sample_shapes": [
+    {
+      "sample_id": "FAKE_0121",
+      "label": "FAKE",
+      "label_id": 1,
+      "face_coverage": 1.0,
+      "num_windows": 3,
+      "video_shape": [
+        3,
+        16,
+        3,
+        224,
+        224
+      ],
+      "audio_shape": [
+        3,
+        104,
+        100
+      ],
+      "audio_present": true,
+      "window_timestamps": [
+        0.94,
+        1.94,
+        2.96
+      ]
+    },
+    {
+      "sample_id": "REAL_0042",
+      "label": "REAL",
+      "label_id": 0,
+      "face_coverage": 1.0,
+      "num_windows": 3,
+      "video_shape": [
+        3,
+        16,
+        3,
+        224,
+        224
+      ],
+      "audio_shape": [
+        3,
+        104,
+        100
+      ],
+      "audio_present": true,
+      "window_timestamps": [
+        2.4,
+        4.96,
+        7.540000000000001
+      ]
+    },
+    {
+      "sample_id": "FAKE_0213",
+      "label": "FAKE",
+      "label_id": 1,
+      "face_coverage": 1.0,
+      "num_windows": 3,
+      "video_shape": [
+        3,
+        16,
+        3,
+        224,
+        224
+      ],
+      "audio_shape": [
+        3,
+        104,
+        100
+      ],
+      "audio_present": true,
+      "window_timestamps": [
+        1.9375,
+        4.0,
+        6.083333333333333
+      ]
+    },
+    {
+      "sample_id": "FAKE_0147",
+      "label": "FAKE",
+      "label_id": 1,
+      "face_coverage": 1.0,
+      "num_windows": 3,
+      "video_shape": [
+        3,
+        16,
+        3,
+        224,
+        224
+      ],
+      "audio_shape": [
+        3,
+        104,
+        100
+      ],
+      "audio_present": true,
+      "window_timestamps": [
+        1.875,
+        3.8958333333333335,
+        5.9375
+      ]
+    }
+  ]
+}

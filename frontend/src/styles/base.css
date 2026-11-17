@@ -9,24 +9,26 @@
 @import '@fontsource/martian-mono/500.css';
 @import '@fontsource/martian-mono/700.css';
 
-/* Baseline Instrument Reset */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@layer base {
+  /* Baseline Instrument Reset */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-html, body {
-  background-color: var(--black-950);
-  color: var(--text-100);
-  font-family: var(--font-text);
-  font-size: 15px;
-  line-height: 1.466;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  overflow-x: hidden;
-  min-height: 100vh;
+  html, body {
+    background-color: var(--black-950);
+    color: var(--text-100);
+    font-family: var(--font-text);
+    font-size: 15px;
+    line-height: 1.466;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
 }
 
 /* Accessible Instrument Focus Ring */
@@ -57,14 +59,11 @@ html, body {
   background: var(--cobalt-500);
 }
 
-/* Ambient Canvas Atmosphere (Master Spec §6.4) */
+/* Ambient Canvas Atmosphere (Refined, calm aesthetic) */
 .canvas-bg {
-  background-color: var(--black-950);
+  background-color: var(--surface-base);
   background-image:
-    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(31, 77, 255, 0.07), transparent 70%),
-    linear-gradient(to right, rgba(151, 174, 210, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(151, 174, 210, 0.025) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(31, 77, 255, 0.06), transparent 70%);
 }
 
 .canvas-container {
@@ -72,6 +71,35 @@ html, body {
   max-width: 1760px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Scanning Beam for Forensic Processing View */
+@keyframes scanBeam {
+  0% {
+    top: 8%;
+  }
+  100% {
+    top: 92%;
+  }
+}
+
+/* Instrument Card Transitions */
+.interactive-card {
+  transition: border-color var(--motion-normal) var(--ease-emphasized),
+              background-color var(--motion-normal) var(--ease-emphasized),
+              box-shadow var(--motion-normal) var(--ease-emphasized);
+}
+
+/* Button & Control Micro-Interactions */
+.interactive-btn {
+  transition: background-color var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              transform var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+
+.interactive-btn:active {
+  transform: scale(0.98);
 }
 
 /* Motion Preferences */

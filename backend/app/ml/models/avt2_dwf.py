@@ -37,6 +37,8 @@ class AVT2Result:
     w_v: Tensor  # [B, 1]
     per_window_scores: Tensor  # [B, K]
     sync_score: Tensor  # scalar
+    audio_logits: Tensor | None = None
+    video_logits: Tensor | None = None
 
 
 class AVT2DWF(nn.Module):
@@ -46,19 +48,42 @@ class AVT2DWF(nn.Module):
         self,
         d_model: int = D_MODEL,
         pretrained_vit: bool = True,
+        audio_layernorm: bool = False,
+        auxiliary_heads: bool = False,
+        classifier_dropout: float = 0.1,
     ) -> None:
         super().__init__()
+        self.d_model = d_model
+        self.auxiliary_heads = auxiliary_heads
         self.face_encoder = FaceEncoder(d_model=d_model, pretrained=pretrained_vit)
-        self.audio_encoder = AudioEncoder(d_model=d_model)
+        self.audio_encoder = AudioEncoder(d_model=d_model, use_layernorm=audio_layernorm)
         self.dwf = DynamicWeightFusion(d_model=d_model)
 
         # Classifier head: fused embedding → 2-class logits
         self.classifier = nn.Sequential(
             nn.Linear(d_model, d_model // 2),
             nn.GELU(),
-            nn.Dropout(p=0.1),
+            nn.Dropout(p=classifier_dropout),
             nn.Linear(d_model // 2, 2),
         )
+
+        # Auxiliary unimodal heads
+        if self.auxiliary_heads:
+            self.audio_classifier: nn.Module | None = nn.Sequential(
+                nn.Linear(d_model, d_model // 2),
+                nn.GELU(),
+                nn.Dropout(p=classifier_dropout),
+                nn.Linear(d_model // 2, 2),
+            )
+            self.video_classifier: nn.Module | None = nn.Sequential(
+                nn.Linear(d_model, d_model // 2),
+                nn.GELU(),
+                nn.Dropout(p=classifier_dropout),
+                nn.Linear(d_model // 2, 2),
+            )
+        else:
+            self.audio_classifier = None
+            self.video_classifier = None
 
         # Per-window head: individual window/segment tokens → score
         self.window_head = nn.Linear(d_model, 1)
@@ -73,6 +98,16 @@ class AVT2DWF(nn.Module):
             if isinstance(layer, nn.Linear):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
+        if self.audio_classifier is not None:
+            for layer in self.audio_classifier:
+                if isinstance(layer, nn.Linear):
+                    nn.init.xavier_uniform_(layer.weight)
+                    nn.init.zeros_(layer.bias)
+        if self.video_classifier is not None:
+            for layer in self.video_classifier:
+                if isinstance(layer, nn.Linear):
+                    nn.init.xavier_uniform_(layer.weight)
+                    nn.init.zeros_(layer.bias)
         nn.init.xavier_uniform_(self.window_head.weight)
         nn.init.zeros_(self.window_head.bias)
 
@@ -122,6 +157,13 @@ class AVT2DWF(nn.Module):
         temperature = self.log_temperature.exp().clamp(min=0.5, max=5.0)
         logits = logits_raw / temperature  # [B, 2]
 
+        # Auxiliary unimodal logits
+        audio_logits: Tensor | None = None
+        video_logits: Tensor | None = None
+        if self.auxiliary_heads and self.audio_classifier is not None and self.video_classifier is not None:
+            audio_logits = self.audio_classifier(A_clip) / temperature
+            video_logits = self.video_classifier(V_clip) / temperature
+
         # --- Per-window fake probability ---
         # Average video and audio window tokens, score with window head
         combined_tokens = (V_windows + a_tokens) / 2.0  # [B, K, 256]
@@ -134,6 +176,8 @@ class AVT2DWF(nn.Module):
             w_v=w_v,
             per_window_scores=per_window_scores,
             sync_score=sync_score,
+            audio_logits=audio_logits,
+            video_logits=video_logits,
         )
 
     @property

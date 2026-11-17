@@ -1,0 +1,145 @@
+{
+  "phase": "PHASE 1/6",
+  "title": "Full Preprocessing Verification & Training Readiness Audit",
+  "status": "PASS",
+  "raw_dataset": {
+    "real_file_count": 250,
+    "fake_file_count": 250,
+    "total_raw_count": 500,
+    "manifest_count": 500,
+    "train_count": 350,
+    "val_count": 76,
+    "test_count": 74,
+    "train_real": 175,
+    "train_fake": 175,
+    "val_real": 38,
+    "val_fake": 38,
+    "test_real": 37,
+    "test_fake": 37,
+    "id_leakage_detected": false,
+    "train_val_overlap": [],
+    "train_test_overlap": [],
+    "val_test_overlap": [],
+    "identity_mapping_available": false,
+    "identity_limitation_note": "Filenames real_XXXX and fake_XXXX do not contain paired source-subject IDs. Zero sample ID overlap is verified; independent cross-pair identity separation cannot be independently proven from filename tokens alone."
+  },
+  "feature_caches": {
+    "total_manifest_samples": 500,
+    "successfully_preprocessed_samples": 500,
+    "usable_train_samples": 350,
+    "usable_val_samples": 76,
+    "usable_test_samples": 74,
+    "target_train": 350,
+    "target_val": 76,
+    "target_test": 74,
+    "missing_cache_count": 0,
+    "corrupt_cache_count": 0,
+    "shape_mismatch_count": 0,
+    "non_finite_count": 0,
+    "poor_face_coverage_count": 46,
+    "poor_face_coverage_samples": [
+      "REAL_0028",
+      "FAKE_0235",
+      "REAL_0158",
+      "REAL_0011",
+      "REAL_0038",
+      "REAL_0183",
+      "REAL_0117",
+      "FAKE_0081",
+      "REAL_0131",
+      "REAL_0113"
+    ],
+    "preprocessing_status": "COMPLETED"
+  },
+  "dataloader_smoke_test": {
+    "status": "PASS",
+    "train_loader_test": {
+      "batch_size": 2,
+      "video_windows_shape": [
+        2,
+        3,
+        16,
+        3,
+        224,
+        224
+      ],
+      "audio_segments_shape": [
+        2,
+        3,
+        104,
+        100
+      ],
+      "audio_mask_shape": [
+        2,
+        3
+      ],
+      "labels": [
+        0,
+        1
+      ],
+      "identities": [
+        "REAL_0104",
+        "FAKE_0133"
+      ]
+    },
+    "val_loader_test": {
+      "batch_size": 2,
+      "video_windows_shape": [
+        2,
+        3,
+        16,
+        3,
+        224,
+        224
+      ],
+      "audio_segments_shape": [
+        2,
+        3,
+        104,
+        100
+      ],
+      "audio_mask_shape": [
+        2,
+        3
+      ],
+      "labels": [
+        0,
+        1
+      ],
+      "identities": [
+        "REAL_0187",
+        "FAKE_0040"
+      ]
+    },
+    "errors": []
+  },
+  "hardware": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python_version": "3.13.2",
+    "pytorch_version": "2.15.0+cpu",
+    "cuda_available": false,
+    "cuda_version": null,
+    "device_count": 0,
+    "gpu_model": "CPU Only (Host: Intel Core i5-10300H)",
+    "vram_gb": 0.0,
+    "total_ram_gb": 15.84,
+    "available_ram_gb": 4.29,
+    "estimated_vram_requirement_gb": 1.5,
+    "vram_fit_assessment": "CPU_FALLBACK",
+    "fp16_amp_supported": false,
+    "active_compute_mode": "cpu"
+  },
+  "model_architecture": {
+    "total_parameters": 95829894,
+    "trainable_parameters": 10031238,
+    "frozen_parameters": 85798656,
+    "expected_total": 95829894,
+    "expected_trainable": 10031238,
+    "parameter_count_match": true,
+    "spatial_backbone_frozen": true
+  },
+  "blockers": [],
+  "warnings": [
+    "CUDA is not enabled in backend/.venv (running PyTorch CPU build). Training will run on host CPU (Intel i5-10300H). To leverage the NVIDIA GTX 1650, PyTorch with CUDA 12.1/12.4 can be installed."
+  ]
+}

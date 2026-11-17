@@ -131,4 +131,60 @@ export const api = {
   delete<T>(path: string, options?: RequestOptions): Promise<T> {
     return apiFetch<T>(path, { ...options, method: 'DELETE' });
   },
+
+  uploadWithProgress<T>(
+    path: string,
+    formData: FormData,
+    onProgress?: (progress: { loaded: number; total: number; percentage: number }) => void,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${BASE}${path}`, true);
+      xhr.withCredentials = true;
+
+      const token = authStore.getToken();
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && e.total > 0) {
+            const percentage = Math.min(100, Math.round((e.loaded / e.total) * 100));
+            onProgress({ loaded: e.loaded, total: e.total, percentage });
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText) as T;
+            resolve(data);
+          } catch {
+            resolve(undefined as unknown as T);
+          }
+        } else {
+          try {
+            const errorBody = JSON.parse(xhr.responseText) as { code?: string; message?: string };
+            reject(
+              new ApiError(
+                xhr.status,
+                errorBody.code ?? 'UPLOAD_ERROR',
+                errorBody.message ?? xhr.statusText,
+              ),
+            );
+          } catch {
+            reject(new ApiError(xhr.status, 'UPLOAD_ERROR', xhr.statusText || 'Upload failed'));
+          }
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new ApiError(0, 'NETWORK_ERROR', 'Network connection interrupted during upload'));
+      };
+
+      xhr.send(formData);
+    });
+  },
 } as const;

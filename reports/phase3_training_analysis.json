@@ -1,0 +1,110 @@
+{
+  "phase": "PHASE 3",
+  "title": "AVT²-DWF Training Performance Analysis & Diagnostic Findings",
+  "execution_timestamp": "2026-11-17T04:40:00Z",
+  "baseline_checkpoint_verified": {
+    "path": "checkpoints/baseline_avt2_dwf.pt",
+    "saved_epoch": 11,
+    "size_mb": 442.29,
+    "restoration_check": {
+      "recorded_val_loss": 1.8823,
+      "recalculated_val_loss": 1.8823,
+      "recorded_val_acc": 0.6579,
+      "recalculated_val_acc": 0.6579,
+      "recorded_val_f1": 0.7174,
+      "recalculated_val_f1": 0.7174,
+      "recorded_val_auc": 0.6974,
+      "recalculated_val_auc": 0.6974,
+      "match": true
+    }
+  },
+  "performance_diagnosis": {
+    "overfitting_status": "CONFIRMED",
+    "divergence_summary": {
+      "train_loss_epoch1": 0.7659,
+      "train_loss_epoch15": 0.2576,
+      "train_loss_change_pct": -66.37,
+      "val_loss_epoch1": 0.6041,
+      "val_loss_epoch15": 1.8410,
+      "val_loss_change_pct": 204.75,
+      "train_acc_epoch1": 0.5857,
+      "train_acc_epoch15": 0.8914,
+      "val_acc_epoch1": 0.6842,
+      "val_acc_epoch15": 0.6579,
+      "val_auc_epoch1": 0.7507,
+      "val_auc_epoch7_peak": 0.7576,
+      "val_auc_epoch15": 0.6745
+    },
+    "error_distribution": {
+      "mean_val_loss": 1.8823,
+      "median_val_loss": 0.1766,
+      "max_val_loss": 11.2493,
+      "samples_loss_gt_2": 21,
+      "samples_loss_gt_4": 14,
+      "pct_samples_loss_gt_2": 27.63,
+      "worst_samples_class": "REAL (Target=0 predicted as FAKE with p > 0.999)"
+    },
+    "confusion_matrix_val": {
+      "true_real_pred_real": 17,
+      "true_real_pred_fake": 21,
+      "true_fake_pred_real": 5,
+      "true_fake_pred_fake": 33,
+      "real_recall": 0.4474,
+      "fake_recall": 0.8684,
+      "real_precision": 0.7727,
+      "fake_precision": 0.6111
+    }
+  },
+  "modality_investigation": {
+    "fusion_weights": {
+      "mean_w_v": 0.9962,
+      "std_w_v": 0.0036,
+      "mean_w_a": 0.0038,
+      "std_w_a": 0.0038,
+      "status": "COLLAPSED_TO_UNIMODAL_VIDEO"
+    },
+    "unimodal_ablation_val": {
+      "video_only": {
+        "accuracy": 0.6579,
+        "f1_score": 0.7174,
+        "roc_auc": 0.6974
+      },
+      "audio_only": {
+        "accuracy": 0.5132,
+        "f1_score": 0.6726,
+        "roc_auc": 0.4972
+      },
+      "full_model": {
+        "accuracy": 0.6579,
+        "f1_score": 0.7174,
+        "roc_auc": 0.6974
+      }
+    },
+    "feature_properties": {
+      "mean_video_norm": 15.3430,
+      "mean_audio_norm": 16.0010,
+      "cosine_similarity_av": 0.0622,
+      "audio_cache_min": -790.8872,
+      "audio_cache_max": 156.5748,
+      "audio_cache_mean": -33.1804,
+      "audio_cache_std": 46.2525
+    }
+  },
+  "data_integrity_check": {
+    "identity_overlap_train_val": 0,
+    "identity_overlap_train_test": 0,
+    "identity_overlap_val_test": 0,
+    "data_leakage_status": "NONE_DETECTED",
+    "mismatch_augmentation_impact": {
+      "configured_mismatch_prob": 0.15,
+      "mechanism": "Rolls audio windows of REAL samples by 1 and forces label to 1 (FAKE)",
+      "side_effect": "Visual classifier received ~26 real face training samples per epoch with label=1 while audio was ignored, inducing 21 false positives on validation"
+    }
+  },
+  "production_checkpoint_status": {
+    "path": "backend/app/ml/weights/avt2_dwf.pt",
+    "sha256": "6de2e663799ee8687c2ca06bbb4309034937c8fbf7a18ba3166ce745052ef354",
+    "verified": true,
+    "untouched": true
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "status": "PASS",
+  "train_loader_test": {
+    "batch_size": 2,
+    "video_windows_shape": [
+      2,
+      3,
+      16,
+      3,
+      224,
+      224
+    ],
+    "audio_segments_shape": [
+      2,
+      3,
+      104,
+      100
+    ],
+    "audio_mask_shape": [
+      2,
+      3
+    ],
+    "labels": [
+      0,
+      1
+    ],
+    "identities": [
+      "REAL_0104",
+      "FAKE_0133"
+    ]
+  },
+  "val_loader_test": {
+    "batch_size": 2,
+    "video_windows_shape": [
+      2,
+      3,
+      16,
+      3,
+      224,
+      224
+    ],
+    "audio_segments_shape": [
+      2,
+      3,
+      104,
+      100
+    ],
+    "audio_mask_shape": [
+      2,
+      3
+    ],
+    "labels": [
+      0,
+      1
+    ],
+    "identities": [
+      "REAL_0187",
+      "FAKE_0040"
+    ]
+  },
+  "errors": []
+}

@@ -1,0 +1,67 @@
+# PARALLAX Phase 4 Improved AVT²-DWF Training Configuration
+experiment:
+  phase: 4
+  name: "improved_avt2_dwf_training"
+  description: "Phase 4 improved training run addressing modality collapse, label noise, and logit overconfidence"
+  date: "2026-11-17"
+
+model:
+  architecture: "AVT2DWF"
+  d_model: 256
+  n_frame_tokens: 4
+  face_layers: 4
+  face_heads: 8
+  audio_layers: 4
+  audio_heads: 8
+  pretrained_vit: true
+  temperature_scaling: true
+  audio_layernorm: true
+  auxiliary_heads: true
+  classifier_dropout: 0.25
+
+loss:
+  criterion: "CrossEntropyLoss"
+  label_smoothing: 0.1
+  aux_audio_weight: 0.3
+  aux_video_weight: 0.1
+  formula: "L_total = L_fused + 0.3 * L_audio + 0.1 * L_video"
+
+training:
+  epochs: 15
+  batch_size: 2
+  grad_accum_steps: 4
+  effective_batch_size: 8
+  lr: 0.0001
+  weight_decay: 0.01
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingLR"
+  gradient_clipping: 1.0
+  patience: 15
+  seed: 42
+  checkpoint_metric: "val_auc"
+
+augmentation:
+  mismatch_prob: 0.0
+  flip_prob: 0.5
+  color_jitter_prob: 0.3
+  audio_noise_prob: 0.3
+  audio_masking_prob: 0.3
+
+data:
+  train_manifest: "datasets/manifests/train.csv"
+  train_samples: 350
+  val_manifest: "datasets/manifests/validation.csv"
+  val_samples: 76
+  test_manifest: "datasets/manifests/test.csv (HELD OUT - ISOLATED)"
+  test_samples: 74
+
+hardware:
+  device: "cuda"
+  gpu: "NVIDIA GeForce GTX 1650"
+  vram_total_mb: 4096.0
+
+artifacts:
+  best_checkpoint: "checkpoints/phase4_best_avt2_dwf.pt"
+  latest_checkpoint: "checkpoints/phase4_latest_avt2_dwf.pt"
+  history_csv: "reports/phase4_training_history.csv"
+  report_json: "reports/phase4_training_report.json"

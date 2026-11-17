@@ -1,63 +1,82 @@
 @theme {
+  /* Layout Metrics (Spec §8) */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 76px;
+
+  /* Surface & Background Hierarchy */
   --color-black-950: #04060B;
   --color-black-900: #080B12;
   --color-black-800: #0F141E;
   --color-black-700: #161D2B;
 
+  --color-surface-base: #04060B;
+  --color-surface-card: #080B12;
+  --color-surface-elevated: #0F141E;
+  --color-surface-overlay: #141B28;
+  --color-surface-hover: #161D2B;
+
+  /* Borders & Dividers */
   --color-line: #1B2231;
   --color-line-strong: #2A3550;
+  --color-border-subtle: #141A26;
+  --color-border-default: #1B2231;
+  --color-border-strong: #2A3550;
+  --color-border-focus: #1F4DFF;
 
+  /* Accent & Brand (Electric Cobalt) */
   --color-cobalt-600: #1438BF;
   --color-cobalt-500: #1F4DFF;
   --color-cobalt-400: #547AFF;
   --color-cobalt-300: #8BA3FF;
+  --color-cobalt-200: #C2D0FF;
 
+  /* Primary Action & Positive (Acid Lime) */
   --color-lime-400: #C8FF2E;
   --color-lime-300: #D8FF5E;
   --color-lime-ink: #0B1200;
 
+  /* Alert, Anomaly & Critical (Coral Red) */
   --color-alert-500: #FF4D5E;
+  --color-alert-400: #FF707E;
   --color-alert-bg: rgba(255, 77, 94, 0.12);
 
-  /* Forensic Channel Modality Colors (Master Spec §6.3) */
+  /* Forensic Channel Modality Colors (Spec §6.3) */
   --color-ch-visual: #3B82F6;
   --color-ch-visual-border: #1D4ED8;
   --color-ch-audio: #06B6D4;
   --color-ch-audio-border: #0891B2;
+  --color-cyan: #06B6D4;
 
+  /* High-Contrast Text Hierarchy */
   --color-text-100: #EEF2FA;
+  --color-text-200: #D4DCEB;
   --color-text-300: #A9B3C7;
   --color-text-400: #8F9CAE;
   --color-text-500: #7886A0;
 
-  /* Master Spec Level 5 Aliases */
-  --color-bg-base: #060911;
-  --color-bg-surface: #0B111D;
-  --color-bg-surface-elevated: #10192A;
-  --color-background: #04060B;
-  --color-surface: #080B12;
-  --color-surface-elevated: #0F141E;
-  --color-surface-hover: #151C29;
-  --color-border: #1B2231;
-  --color-border-strong: #2A3550;
-  --color-cobalt: #1F4DFF;
-  --color-cobalt-light: #8BA3FF;
-  --color-cyan: #06B6D4;
-  --color-lime: #C8FF2E;
-  --color-danger: #FF4D5E;
-  --color-warning: #FFB84D;
-  --color-success: #C8FF2E;
   --color-text-primary: #EEF2FA;
   --color-text-secondary: #A9B3C7;
   --color-text-muted: #68758B;
 
+  /* Status Colors */
+  --color-status-authentic: #C8FF2E;
+  --color-status-fake: #FF4D5E;
+  --color-status-inconclusive: #FFB84D;
+  --color-status-info: #547AFF;
+
+  /* Fonts */
   --font-display: 'Anybody', sans-serif;
   --font-sans: 'Hanken Grotesk', sans-serif;
   --font-mono: 'Martian Mono', monospace;
 
+  /* Radii */
+  --radius-xs: 2px;
   --radius-sm: 4px;
-  --radius-md: 8px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-cell: 10px;
+  --radius-full: 9999px;
 }
 
 :root {
@@ -66,22 +85,32 @@
   --black-800: #0F141E;
   --black-700: #161D2B;
 
+  --surface-base: #04060B;
+  --surface-card: #080B12;
+  --surface-elevated: #0F141E;
+  --surface-overlay: #141B28;
+  --surface-hover: #161D2B;
+
   --line: #1B2231;
   --line-strong: #2A3550;
+  --border-subtle: #141A26;
+  --border-default: #1B2231;
+  --border-strong: #2A3550;
 
   --cobalt-600: #1438BF;
   --cobalt-500: #1F4DFF;
   --cobalt-400: #547AFF;
   --cobalt-300: #8BA3FF;
+  --cobalt-200: #C2D0FF;
 
   --lime-400: #C8FF2E;
   --lime-300: #D8FF5E;
   --lime-ink: #0B1200;
 
   --alert-500: #FF4D5E;
+  --alert-400: #FF707E;
   --alert-bg: rgba(255, 77, 94, 0.12);
 
-  /* Forensic Channel Modality Colors (Master Spec §6.3) */
   --ch-visual: #3B82F6;
   --ch-visual-border: #1D4ED8;
   --ch-audio: #06B6D4;
@@ -89,34 +118,35 @@
   --cyan: #06B6D4;
 
   --text-100: #EEF2FA;
+  --text-200: #D4DCEB;
   --text-300: #A9B3C7;
   --text-400: #8F9CAE;
   --text-500: #7886A0;
-
-  /* Master Spec Level 5 Aliases */
-  --bg-base: #060911;
-  --bg-surface: #0B111D;
-  --bg-surface-elevated: #10192A;
-  --background: #04060B;
-  --surface: #080B12;
-  --surface-elevated: #0F141E;
-  --surface-hover: #151C29;
-  --border: #1B2231;
-  --border-strong: #2A3550;
-  --cobalt: #1F4DFF;
-  --cobalt-light: #8BA3FF;
-  --lime: #C8FF2E;
-  --danger: #FF4D5E;
-  --warning: #FFB84D;
-  --success: #C8FF2E;
-  --text-primary: #EEF2FA;
-  --text-secondary: #A9B3C7;
-  --text-muted: #68758B;
 
   --font-display: 'Anybody', sans-serif;
   --font-text: 'Hanken Grotesk', sans-serif;
   --font-mono: 'Martian Mono', monospace;
 
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-cell: 10px;
+
   --ease-instrument: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-smooth: 240ms;
+  --motion-slow: 320ms;
+
   --border-hairline: 1px solid var(--line);
+
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.85);
+  --shadow-glow-cobalt: 0 0 24px rgba(31, 77, 255, 0.18);
+  --shadow-glow-lime: 0 0 24px rgba(200, 255, 46, 0.22);
 }

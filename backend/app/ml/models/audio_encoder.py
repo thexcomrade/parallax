@@ -36,12 +36,17 @@ class AudioEncoder(nn.Module):
         d_model: int = D_MODEL,
         num_layers: int = NUM_LAYERS,
         num_heads: int = NUM_HEADS,
+        use_layernorm: bool = False,
     ) -> None:
         super().__init__()
         self.d_model = d_model
+        self.use_layernorm = use_layernorm
 
         # Flatten each segment [104, 100] → 10400 then project to d_model
         self.patch_embed = nn.Linear(feat_dim * time_dim, d_model)
+        self.proj_norm: nn.Module = (
+            nn.LayerNorm(d_model) if use_layernorm else nn.Identity()
+        )
 
         # Learned positional encoding
         self.pos_embedding = nn.Embedding(MAX_TOKENS, d_model)
@@ -78,6 +83,7 @@ class AudioEncoder(nn.Module):
 
         # Project to d_model
         tokens: Tensor = self.patch_embed(x_flat)  # [B, K, 256]
+        tokens = self.proj_norm(tokens)
 
         # Add positional encoding
         positions = torch.arange(K, device=x.device).unsqueeze(0)  # [1, K]

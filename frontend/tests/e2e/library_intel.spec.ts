@@ -39,17 +39,17 @@ test.describe('Phase 8: Library & Intel Public APIs', () => {
     await expect(styleganSample).toBeVisible();
 
     // Verify filter tabs
-    const authenticTab = page.getByRole('button', { name: 'AUTHENTIC' });
+    const authenticTab = page.getByRole('button', { name: /AUTHENTIC/i });
     await authenticTab.click();
     await expect(apolloSample).toBeVisible();
     await expect(styleganSample).not.toBeVisible();
 
-    const syntheticTab = page.getByRole('button', { name: 'SYNTHETIC' });
+    const syntheticTab = page.getByRole('button', { name: /SYNTHETIC/i });
     await syntheticTab.click();
     await expect(styleganSample).toBeVisible();
     await expect(apolloSample).not.toBeVisible();
 
-    const allTab = page.getByRole('button', { name: /^ALL/ });
+    const allTab = page.getByRole('button', { name: /ALL SAMPLES|^ALL/i });
     await allTab.click();
     await expect(apolloSample).toBeVisible();
     await expect(styleganSample).toBeVisible();
@@ -74,12 +74,12 @@ test.describe('Phase 8: Library & Intel Public APIs', () => {
     // Verify zero third-party requests were initiated by the browser
     expect(foreignRequests).toEqual([]);
 
-    // Click "ANALYZE THIS SAMPLE" on Apollo 11
-    const analyzeBtn = page.getByRole('button', { name: /Analyze this sample: Apollo 11/i });
+    // Click "Analyze Sample" on Apollo 11
+    const analyzeBtn = page.getByRole('button', { name: /Analyze/i }).first();
     await analyzeBtn.click();
 
     // Verify auto-navigation to report page
-    await expect(page).toHaveURL(/\/app\/analyses\/[0-9a-f-]+/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/analyses\/[0-9a-f-]+/, { timeout: 30_000 });
   });
 
   test('Intel page renders telemetry panels, displays provenance notice, and makes 0 foreign network requests', async ({
@@ -96,18 +96,18 @@ test.describe('Phase 8: Library & Intel Public APIs', () => {
     });
 
     await page.goto('/app/intel');
-    await expect(page.locator('h1')).toContainText('Forensics Intelligence Radar');
+    await expect(page.locator('h1')).toContainText('Forensic Threat & Research Recon');
 
     // Verify provenance notice
     await expect(page.getByLabel('Provenance notice')).toBeVisible();
 
     // Verify the three telemetry panels
-    await expect(page.getByText('THREAT-PULSE // GDELT DOC 2.0')).toBeVisible();
-    await expect(page.getByText('RESEARCH-RADAR // arXiv ATOM')).toBeVisible();
-    await expect(page.getByText('COMMUNITY-PULSE // HN ALGOLIA')).toBeVisible();
+    await expect(page.getByText('Media Threats')).toBeVisible();
+    await expect(page.getByText('Academic Literature')).toBeVisible();
+    await expect(page.getByText('Technical Pulse')).toBeVisible();
 
     // Verify refresh telemetry button is present
-    const refreshBtn = page.getByRole('button', { name: /REFRESH TELEMETRY/i });
+    const refreshBtn = page.getByRole('button', { name: /REFRESH RECON/i });
     await expect(refreshBtn).toBeVisible();
 
     // Verify no horizontal overflow

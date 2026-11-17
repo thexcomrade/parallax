@@ -2,39 +2,37 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { BentoGrid } from '@/components/bento/BentoGrid';
-import { BentoCell } from '@/components/bento/BentoCell';
-import { Badge } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { formatRelativeTime } from '@/lib/format';
 import type {
   AnalysisListResponse,
   ReadyResponse,
-  ResearchFeedResponse,
-  ThreatFeedResponse,
   ModelCardResponse,
 } from '@/types/api';
-import { ArrowUpRight, Cpu, Plus, Video, Volume2 } from 'lucide-react';
+import {
+  Plus,
+  ArrowRight,
+  Cpu,
+  Video,
+  Volume2,
+  UploadCloud,
+  FileText,
+  ShieldCheck,
+  AlertTriangle,
+  Activity,
+  FolderArchive,
+  History,
+  RotateCw,
+} from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Queries
+  // Queries backed strictly by real API responses
   const analysesQuery = useQuery({
     queryKey: ['analyses'],
     queryFn: () => api.get<AnalysisListResponse>('/analyses?page=1&size=10'),
     staleTime: 30_000,
-  });
-
-  const threatsQuery = useQuery({
-    queryKey: ['feeds', 'threats'],
-    queryFn: () => api.get<ThreatFeedResponse>('/feeds/threats'),
-    staleTime: 120_000,
-  });
-
-  const researchQuery = useQuery({
-    queryKey: ['feeds', 'research'],
-    queryFn: () => api.get<ResearchFeedResponse>('/feeds/research'),
-    staleTime: 120_000,
   });
 
   const readyQuery = useQuery({
@@ -52,430 +50,394 @@ export const DashboardPage: React.FC = () => {
   const analyses = analysesQuery.data?.items ?? [];
   const totalScans = analysesQuery.data?.total ?? analyses.length;
 
-  // Genuine KPI calculations
-  const completedAnalyses = analyses.filter((a) => a.status === 'done');
-  const evaluatedAnalyses = analyses.filter((a) => a.verdict && a.status === 'done');
-  const hasEvaluated = evaluatedAnalyses.length > 0;
+  // Genuine KPI calculations from real analyses
+  const evaluatedAnalyses = analyses.filter(
+    (a) => a.verdict && (a.status === 'done' || a.status === 'completed'),
+  );
 
   const fakes = evaluatedAnalyses.filter((a) => a.verdict === 'FAKE').length;
   const authentic = evaluatedAnalyses.filter((a) => a.verdict === 'AUTHENTIC').length;
-  const inconclusive = evaluatedAnalyses.filter((a) => a.verdict === 'INCONCLUSIVE').length;
-  const totalEvaluated = fakes + authentic + inconclusive;
-
-  const fakePct = totalEvaluated > 0 ? Math.round((fakes / totalEvaluated) * 100) : 0;
-  const authPct = totalEvaluated > 0 ? Math.round((authentic / totalEvaluated) * 100) : 0;
-  const inconclPct = totalEvaluated > 0 ? Math.max(0, 100 - fakePct - authPct) : 0;
-
-  const latestDoneId = completedAnalyses[0]?.id;
 
   const isUntrained = modelQuery.data?.model_mode === 'untrained';
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-[1760px] mx-auto py-2">
-      {/* Forensic Workspace Header & Hero */}
-      <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-5 border-b border-[var(--line)]">
+    <div className="flex flex-col gap-6 sm:gap-7 w-full">
+      {/* ── SECTION 1 — COMPACT INTRODUCTION ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-[var(--cobalt-300)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--lime-400)]" />
-            PARALLAX FORENSIC WORKSPACE // OVERVIEW
-          </div>
-          <h1 className="font-display font-black text-2xl lg:text-3xl uppercase tracking-tight text-[var(--text-100)] mt-1">
-            Forensic Command Bench
+          <span className="text-[11px] font-mono font-semibold tracking-wider text-[#648CFF] uppercase">
+            WORKSPACE
+          </span>
+          <h1 className="text-2xl sm:text-[30px] font-semibold tracking-tight text-[#E8EDF5] mt-0.5 leading-tight">
+            Dashboard <span className="sr-only">Forensic Command Overview</span>
           </h1>
-          <p className="font-sans text-xs text-[var(--text-300)] mt-0.5 max-w-2xl">
-            Audio-visual deepfake detection, cross-modal transformer feature extraction, and dynamic weight fusion.
+          <p className="text-xs sm:text-[14px] text-[#91A0B8] mt-1">
+            Your audio-visual deepfake detection workspace.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Model Status Chip */}
-          <Link
-            to="/app/model"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--black-900)] border border-[var(--line)] hover:border-[var(--line-strong)] text-xs font-mono transition-colors"
-            title="View Model Transparency Card"
-          >
-            <Cpu size={14} className="text-[var(--cobalt-400)]" />
-            <span className="text-[var(--text-300)]">
-              {modelQuery.data ? `${modelQuery.data.model_name} ${modelQuery.data.model_version}` : 'AVT²-DWF v1.0.0'}
+        {/* Content-fit single primary action */}
+        <button
+          type="button"
+          onClick={() => navigate('/app/analyze')}
+          className="h-[38px] sm:h-10 inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 rounded-[8px] bg-[#3B66EB] hover:bg-[#4E77F3] active:bg-[#3258D6] text-white font-semibold text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-[#648CFF] shadow-xs cursor-pointer leading-none w-fit shrink-0"
+        >
+          <Plus size={16} strokeWidth={2.5} className="shrink-0" />
+          <span>New Analysis</span>
+        </button>
+      </div>
+
+      {/* Untrained Benchmark Banner (if running uncalibrated weights) */}
+      {isUntrained && (
+        <aside
+          role="note"
+          className="p-3.5 rounded-[12px] bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs text-amber-200"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+            <span>
+              <strong>Model Weights Uncalibrated:</strong> Detection output verifies architectural dataflow only.
             </span>
-            <span
-              className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
-                isUntrained
-                  ? 'bg-amber-950/40 text-amber-300 border-amber-600/40'
-                  : 'bg-[var(--lime-400)]/10 text-[var(--lime-400)] border-[var(--lime-400)]/30'
-              }`}
-            >
-              {isUntrained ? 'UNTRAINED' : 'VERIFIED WEIGHTS'}
+          </div>
+        </aside>
+      )}
+
+      {/* ── SECTION 2 — OVERVIEW METRIC CARDS (4 equal fraction cards) ── */}
+      <section
+        aria-label="Overview Metrics"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+      >
+        {/* Card 1: Total Analyses */}
+        <div className="p-4 sm:p-[18px] rounded-[12px] bg-[#171F2D] border border-[#253247] hover:border-[#374866] transition-colors flex flex-col justify-between min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] sm:text-[13px] font-medium text-[#91A0B8]">
+              Total Analyses
             </span>
-          </Link>
-
-          {/* Primary Action Button */}
-          <Link
-            to="/app/analyze"
-            className="inline-flex items-center justify-center gap-2 min-h-[40px] px-5 rounded-[var(--radius-sm)] bg-[var(--lime-400)] text-[var(--lime-ink)] font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--lime-300)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--cobalt-500)]"
-          >
-            <Plus size={14} strokeWidth={3} />
-            <span>NEW ANALYSIS</span>
-          </Link>
-        </div>
-      </header>
-
-      {/* KPI Overview Row (Master Spec §7.4) */}
-      <section aria-label="Forensic Key Metrics" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="p-3.5 bg-[var(--black-900)] border border-[var(--line)] rounded-[var(--radius-cell)] flex flex-col justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--text-400)]">
-            TOTAL ANALYSES
-          </span>
-          <div className="font-display font-bold text-2xl lg:text-3xl text-[var(--text-100)] mt-1">
-            {totalScans}
+            <div className="w-8 h-8 rounded-[8px] bg-[#111927] border border-[#253247] flex items-center justify-center text-[#91A0B8] shrink-0">
+              <FileText size={16} />
+            </div>
           </div>
-          <span className="font-mono text-[10px] text-[var(--text-500)] mt-1">
-            ALL TIME SCANS
-          </span>
+          <div className="mt-2.5">
+            <div className="text-2xl sm:text-[28px] font-semibold text-[#E8EDF5] tracking-tight leading-none">
+              {analysesQuery.isLoading ? <Skeleton className="h-7 w-16" /> : totalScans}
+            </div>
+            <p className="text-[11px] sm:text-[12px] text-[#91A0B8] mt-1.5 leading-none">
+              Persisted scan dossiers
+            </p>
+          </div>
         </div>
 
-        <div className="p-3.5 bg-[var(--black-900)] border border-[var(--line)] rounded-[var(--radius-cell)] flex flex-col justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--text-400)]">
-            COMPLETED
-          </span>
-          <div className="font-display font-bold text-2xl lg:text-3xl text-[var(--lime-400)] mt-1">
-            {completedAnalyses.length}
+        {/* Card 2: REAL Results */}
+        <div className="p-4 sm:p-[18px] rounded-[12px] bg-[#171F2D] border border-[#253247] hover:border-[#35C99A]/40 transition-colors flex flex-col justify-between min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] sm:text-[13px] font-medium text-[#91A0B8]">
+              REAL Results
+            </span>
+            <div className="w-8 h-8 rounded-[8px] bg-[#35C99A]/10 border border-[#35C99A]/25 flex items-center justify-center text-[#35C99A] shrink-0">
+              <ShieldCheck size={16} />
+            </div>
           </div>
-          <span className="font-mono text-[10px] text-[var(--text-500)] mt-1">
-            PERSISTED DOSSIERS
-          </span>
+          <div className="mt-2.5">
+            <div className="text-2xl sm:text-[28px] font-semibold text-[#35C99A] tracking-tight leading-none">
+              {analysesQuery.isLoading ? <Skeleton className="h-7 w-16" /> : authentic}
+            </div>
+            <p className="text-[11px] sm:text-[12px] text-[#91A0B8] mt-1.5 leading-none">
+              Verified authentic media
+            </p>
+          </div>
         </div>
 
-        <div className="p-3.5 bg-[var(--black-900)] border border-[var(--line)] rounded-[var(--radius-cell)] flex flex-col justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--alert-500)]">
-            FAKE DETECTED
-          </span>
-          <div className="font-display font-bold text-2xl lg:text-3xl text-[var(--alert-500)] mt-1">
-            {fakes}
+        {/* Card 3: FAKE Results */}
+        <div className="p-4 sm:p-[18px] rounded-[12px] bg-[#171F2D] border border-[#253247] hover:border-[#F16F78]/40 transition-colors flex flex-col justify-between min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] sm:text-[13px] font-medium text-[#91A0B8]">
+              FAKE Results
+            </span>
+            <div className="w-8 h-8 rounded-[8px] bg-[#F16F78]/10 border border-[#F16F78]/25 flex items-center justify-center text-[#F16F78] shrink-0">
+              <AlertTriangle size={16} />
+            </div>
           </div>
-          <span className="font-mono text-[10px] text-[var(--text-500)] mt-1">
-            P_FAKE &gt; 0.65
-          </span>
+          <div className="mt-2.5">
+            <div className="text-2xl sm:text-[28px] font-semibold text-[#F16F78] tracking-tight leading-none">
+              {analysesQuery.isLoading ? <Skeleton className="h-7 w-16" /> : fakes}
+            </div>
+            <p className="text-[11px] sm:text-[12px] text-[#91A0B8] mt-1.5 leading-none">
+              Manipulated media detected
+            </p>
+          </div>
         </div>
 
-        <div className="p-3.5 bg-[var(--black-900)] border border-[var(--line)] rounded-[var(--radius-cell)] flex flex-col justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--lime-400)]">
-            AUTHENTIC
-          </span>
-          <div className="font-display font-bold text-2xl lg:text-3xl text-[var(--lime-400)] mt-1">
-            {authentic}
+        {/* Card 4: Latest Analysis */}
+        <div className="p-4 sm:p-[18px] rounded-[12px] bg-[#171F2D] border border-[#253247] hover:border-[#374866] transition-colors flex flex-col justify-between min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] sm:text-[13px] font-medium text-[#91A0B8]">
+              Latest Analysis
+            </span>
+            <div className="w-8 h-8 rounded-[8px] bg-[#111927] border border-[#253247] flex items-center justify-center text-[#648CFF] shrink-0">
+              <Activity size={16} />
+            </div>
           </div>
-          <span className="font-mono text-[10px] text-[var(--text-500)] mt-1">
-            P_FAKE &lt; 0.35
-          </span>
-        </div>
-
-        <div className="p-3.5 bg-[var(--black-900)] border border-[var(--line)] rounded-[var(--radius-cell)] flex flex-col justify-between col-span-2 sm:col-span-1">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--text-400)]">
-            INCONCLUSIVE
-          </span>
-          <div className="font-display font-bold text-2xl lg:text-3xl text-[var(--text-300)] mt-1">
-            {inconclusive}
+          <div className="mt-2.5">
+            <div className="text-2xl sm:text-[28px] font-semibold text-[#E8EDF5] tracking-tight leading-none truncate">
+              {analysesQuery.isLoading ? (
+                <Skeleton className="h-7 w-20" />
+              ) : analyses[0] ? (
+                formatRelativeTime(analyses[0].created_at)
+              ) : (
+                'Idle'
+              )}
+            </div>
+            <p className="text-[11px] sm:text-[12px] text-[#91A0B8] mt-1.5 leading-none">
+              Most recent forensic scan
+            </p>
           </div>
-          <span className="font-mono text-[10px] text-[var(--text-500)] mt-1">
-            UNCERTAIN REGION
-          </span>
         </div>
       </section>
 
-      {/* Main Bento Grid */}
-      <BentoGrid>
-        {/* Cell 1: Quick-Analyze Dropzone Banner (colSpan 8) */}
-        <BentoCell
-          label="MEDIA INGEST // WORKBENCH"
-          status="READY"
-          colSpan={8}
-          className="min-h-[160px]"
-        >
-          <div
-            onClick={() => navigate('/app/analyze')}
-            className="flex-1 border-2 border-dashed border-[var(--line-strong)] hover:border-[var(--cobalt-400)] rounded-[var(--radius-sm)] p-5 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer transition-colors bg-[var(--black-950)]/40 group"
-          >
-            <div className="flex flex-col gap-1 text-center sm:text-left">
-              <span className="font-mono text-xs text-[var(--cobalt-300)] font-bold uppercase tracking-wider">
-                MEDIA INGESTION DESK
-              </span>
-              <span className="font-sans text-sm text-[var(--text-100)] font-medium">
-                Upload target MP4, WebM, or MOV sequence for multimodal forensic inspection.
-              </span>
-              <span className="font-mono text-[10px] text-[var(--text-500)]">
-                MAX 100 MB // MAX 60 SECONDS // 1080P CONTAINER // FFmpeg &amp; OpenCV PIPELINE
-              </span>
-            </div>
-            <div className="px-4 py-2 bg-[var(--black-800)] border border-[var(--line-strong)] group-hover:border-[var(--cobalt-400)] rounded-[var(--radius-sm)] font-mono text-xs text-[var(--text-100)] uppercase tracking-wider shrink-0 transition-colors flex items-center gap-1.5">
-              <span>LAUNCH WORKBENCH</span>
-              <ArrowUpRight size={13} />
-            </div>
-          </div>
-        </BentoCell>
-
-        {/* Cell 2: System Architecture Telemetry (colSpan 4) */}
-        <BentoCell
-          label="ENGINE TELEMETRY"
-          status={readyQuery.data?.status === 'ready' ? 'READY' : 'DIAGNOSTIC'}
-          colSpan={4}
-          className="min-h-[160px]"
-        >
-          <div className="flex-1 flex flex-col justify-center gap-2 font-mono text-xs">
-            <div className="flex items-center justify-between pb-1 border-b border-[var(--line)]">
-              <span className="font-sans text-xs text-[var(--text-400)]">Architecture</span>
-              <span className="text-[var(--text-100)] font-bold text-xs">AVT²-DWF</span>
-            </div>
-            <div className="flex items-center justify-between pb-1 border-b border-[var(--line)]">
-              <span className="font-sans text-xs text-[var(--text-400)]">Checkpoint</span>
-              <span className="text-xs text-[var(--cobalt-300)] truncate max-w-[150px]">
-                {modelQuery.data?.checkpoint_hash ? modelQuery.data.checkpoint_hash.slice(0, 12) + '...' : 'LOCAL_WEIGHTS'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between pb-1 border-b border-[var(--line)]">
-              <span className="font-sans text-xs text-[var(--text-400)]">Database</span>
-              <span className="text-[var(--lime-400)] font-bold text-xs">● CONNECTED (WAL)</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-sans text-xs text-[var(--text-400)]">Modality Channels</span>
-              <div className="flex items-center gap-2 text-[10px]">
-                <span className="text-[var(--ch-visual)] font-bold flex items-center gap-1">
-                  <Video size={10} /> VISUAL
-                </span>
-                <span className="text-[var(--ch-audio)] font-bold flex items-center gap-1">
-                  <Volume2 size={10} /> AUDIO
-                </span>
+      {/* ── SECTION 3 — MAIN CONTENT GRID (8 cols / 4 cols) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
+        {/* Left Column (8 cols): Recent Analyses Panel */}
+        <div className="lg:col-span-8 flex flex-col gap-4 min-w-0">
+          <div className="rounded-[12px] bg-[#171F2D] border border-[#253247] overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b border-[#253247] flex items-center justify-between">
+              <div>
+                <h2 className="text-sm sm:text-base font-semibold text-[#E8EDF5]">
+                  Recent Analyses
+                </h2>
+                <p className="text-xs text-[#91A0B8] mt-0.5">
+                  Your latest detection results.
+                </p>
               </div>
+              <Link
+                to="/app/history"
+                className="text-xs font-medium text-[#648CFF] hover:text-[#88A7FF] inline-flex items-center gap-1 transition-colors focus-visible:outline-2 focus-visible:outline-[#648CFF] rounded"
+              >
+                <span>View All</span>
+                <ArrowRight size={13} />
+              </Link>
             </div>
-          </div>
-        </BentoCell>
 
-        {/* Cell 3: Verdict Distribution (Stacked Histogram, Truthful Empty State) (colSpan 6) */}
-        <BentoCell
-          label="VERDICT DISTRIBUTION"
-          status={hasEvaluated ? 'EMPIRICAL HISTOGRAM' : 'EMPTY'}
-          colSpan={6}
-          className="min-h-[220px]"
-        >
-          {!hasEvaluated ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-1.5">
-              <span className="font-mono text-xs text-[var(--text-400)] uppercase font-semibold">
-                NO COMPLETED ANALYSES YET
+            {/* List / Empty State / Error State */}
+            <div className="p-0">
+              {analysesQuery.isLoading ? (
+                <div className="p-4 sm:p-5 flex flex-col gap-2.5">
+                  <Skeleton className="h-14 w-full rounded-[8px]" />
+                  <Skeleton className="h-14 w-full rounded-[8px]" />
+                  <Skeleton className="h-14 w-full rounded-[8px]" />
+                </div>
+              ) : analysesQuery.isError ? (
+                /* Compact Error State */
+                <div className="p-8 sm:p-10 flex flex-col items-center justify-center text-center">
+                  <div className="w-10 h-10 rounded-[10px] bg-red-500/10 border border-red-500/25 flex items-center justify-center text-[#F16F78] mb-2.5">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <h3 className="text-sm font-semibold text-[#E8EDF5]">Unable to load analyses</h3>
+                  <p className="text-xs text-[#91A0B8] max-w-xs mt-1 mb-3.5">
+                    The forensic telemetry service could not be reached.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => analysesQuery.refetch()}
+                    className="h-[34px] inline-flex items-center gap-1.5 px-3 rounded-[8px] bg-[#1C2737] hover:bg-[#253247] border border-[#253247] text-white text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    <RotateCw size={13} />
+                    <span>Retry connection</span>
+                  </button>
+                </div>
+              ) : analyses.length === 0 ? (
+                /* Compact Empty State */
+                <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-11 h-11 rounded-[10px] bg-[#111927] border border-[#253247] flex items-center justify-center text-[#648CFF] mb-3">
+                    <FileText size={18} />
+                  </div>
+                  <h3 className="text-sm sm:text-[15px] font-semibold text-[#E8EDF5]">No analyses yet</h3>
+                  <p className="text-xs sm:text-[13px] text-[#91A0B8] max-w-xs mt-1 mb-4">
+                    Start your first audio-visual deepfake analysis.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/app/analyze')}
+                    className="h-[36px] inline-flex items-center gap-1.5 px-3.5 rounded-[8px] bg-[#3B66EB] hover:bg-[#4E77F3] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer w-fit"
+                  >
+                    <Plus size={14} strokeWidth={2.5} />
+                    <span>Start Analysis</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#253247]">
+                  {analyses.slice(0, 5).map((item) => (
+                    <Link
+                      key={item.id}
+                      to={`/app/analyses/${item.id}`}
+                      className="px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 hover:bg-[#1C2737]/60 transition-colors group min-h-[60px] sm:min-h-[64px]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-[8px] bg-[#111927] border border-[#253247] flex items-center justify-center text-[#91A0B8] group-hover:text-[#648CFF] group-hover:border-[#648CFF]/30 shrink-0 transition-colors">
+                          <Video size={17} />
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span
+                            className="text-xs sm:text-[13px] font-medium text-[#E8EDF5] truncate group-hover:text-white"
+                            title={item.original_name}
+                          >
+                            {item.original_name}
+                          </span>
+                          <span className="text-[11px] text-[#91A0B8] mt-0.5">
+                            {formatRelativeTime(item.created_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        {item.verdict === 'FAKE' && (
+                          <span className="h-[25px] inline-flex items-center gap-1.5 px-2.5 rounded-[7px] text-[11px] font-semibold bg-[#F16F78]/15 text-[#F16F78] border border-[#F16F78]/30">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#F16F78]" />
+                            FAKE
+                          </span>
+                        )}
+                        {item.verdict === 'AUTHENTIC' && (
+                          <span className="h-[25px] inline-flex items-center gap-1.5 px-2.5 rounded-[7px] text-[11px] font-semibold bg-[#35C99A]/15 text-[#35C99A] border border-[#35C99A]/30">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#35C99A]" />
+                            REAL
+                          </span>
+                        )}
+                        {(!item.verdict || item.verdict === 'INCONCLUSIVE') && (
+                          <span className="h-[25px] inline-flex items-center gap-1.5 px-2.5 rounded-[7px] text-[11px] font-semibold bg-[#111927] text-[#91A0B8] border border-[#253247]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#91A0B8]" />
+                            {item.status === 'processing' || item.status === 'running'
+                              ? 'PROCESSING'
+                              : 'INCONCLUSIVE'}
+                          </span>
+                        )}
+                        <ArrowRight
+                          size={14}
+                          className="text-[#91A0B8] group-hover:text-[#E8EDF5] group-hover:translate-x-0.5 transition-all hidden sm:block shrink-0"
+                        />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {analyses.length > 0 && (
+              <div className="px-4 sm:px-5 py-2.5 border-t border-[#253247] bg-[#111927]/40 flex items-center justify-between text-[11px] text-[#91A0B8]">
+                <span>Showing {Math.min(5, analyses.length)} most recent records</span>
+                <span>Total indexed: {totalScans}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column (4 cols): Secondary Workspace & Telemetry */}
+        <div className="lg:col-span-4 flex flex-col gap-4 min-w-0">
+          {/* Media Ingestion Workbench Card */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/app/analyze')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/app/analyze')}
+            className="p-4 sm:p-[18px] rounded-[12px] bg-[#171F2D] border border-[#253247] hover:border-[#648CFF]/50 transition-all cursor-pointer group flex flex-col gap-3 focus-visible:outline-2 focus-visible:outline-[#648CFF]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-8.5 h-8.5 rounded-[8px] bg-[#648CFF]/15 border border-[#648CFF]/25 flex items-center justify-center text-[#648CFF] group-hover:scale-105 transition-transform shrink-0">
+                <UploadCloud size={17} />
+              </div>
+              <span className="h-[22px] inline-flex items-center gap-1 px-2 rounded-[6px] text-[10px] font-mono text-[#35C99A] bg-[#35C99A]/10 border border-[#35C99A]/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#35C99A]" />
+                READY
               </span>
-              <p className="font-sans text-xs text-[var(--text-500)] max-w-sm">
-                Upload video media to begin forensic evaluation. Results will automatically aggregate into the empirical histogram.
+            </div>
+
+            <div>
+              <h3 className="text-[13px] sm:text-sm font-semibold text-[#E8EDF5] group-hover:text-white transition-colors">
+                Media Ingestion Workbench
+              </h3>
+              <p className="text-xs text-[#91A0B8] mt-1 leading-relaxed">
+                Upload video media (MP4, WebM, MOV) for biometric and acoustic transformer verification.
               </p>
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col justify-center gap-4">
-              {/* Stacked bar */}
-              <div className="w-full h-4 rounded-xs overflow-hidden flex bg-[var(--black-950)] border border-[var(--line)]">
-                {fakePct > 0 && (
-                  <div
-                    style={{ width: `${fakePct}%` }}
-                    className="h-full bg-[var(--alert-500)] transition-all duration-300"
-                    title={`Fake: ${fakePct}%`}
-                  />
-                )}
-                {authPct > 0 && (
-                  <div
-                    style={{ width: `${authPct}%` }}
-                    className="h-full bg-[var(--lime-400)] transition-all duration-300"
-                    title={`Authentic: ${authPct}%`}
-                  />
-                )}
-                {inconclPct > 0 && (
-                  <div
-                    style={{ width: `${inconclPct}%` }}
-                    className="h-full bg-[var(--black-800)] transition-all duration-300"
-                    title={`Inconclusive: ${inconclPct}%`}
-                  />
-                )}
-              </div>
 
-              {/* Split Legend */}
-              <div className="grid grid-cols-3 gap-3 font-mono text-[10px]">
-                <div className="flex flex-col p-2 rounded bg-[var(--black-950)] border border-[var(--line)]">
-                  <span className="text-[var(--alert-500)] font-bold">FAKE</span>
-                  <span className="text-[var(--text-100)] font-bold text-base font-display">{fakePct}%</span>
-                  <span className="text-[var(--text-500)]">{fakes} CLIPS</span>
-                </div>
-                <div className="flex flex-col p-2 rounded bg-[var(--black-950)] border border-[var(--line)]">
-                  <span className="text-[var(--lime-400)] font-bold">AUTHENTIC</span>
-                  <span className="text-[var(--text-100)] font-bold text-base font-display">{authPct}%</span>
-                  <span className="text-[var(--text-500)]">{authentic} CLIPS</span>
-                </div>
-                <div className="flex flex-col p-2 rounded bg-[var(--black-950)] border border-[var(--line)]">
-                  <span className="text-[var(--text-400)] font-bold">INCONCLUSIVE</span>
-                  <span className="text-[var(--text-100)] font-bold text-base font-display">{inconclPct}%</span>
-                  <span className="text-[var(--text-500)]">{inconclusive} CLIPS</span>
-                </div>
-              </div>
+            <div className="pt-2 border-t border-[#253247]/60 flex items-center justify-between text-xs text-[#648CFF] font-medium group-hover:text-[#88A7FF]">
+              <span>Launch Workbench</span>
+              <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
             </div>
-          )}
-        </BentoCell>
+          </div>
 
-        {/* Cell 4: Modality Fusion Architecture (Section 6: Cobalt for Visual, Cyan for Audio) (colSpan 6) */}
-        <BentoCell
-          label="DYNAMIC WEIGHT FUSION (AVT²-DWF)"
-          status={hasEvaluated ? 'ACTIVE GATING' : 'READY'}
-          colSpan={6}
-          className="min-h-[220px]"
-        >
-          <div className="flex-1 flex flex-col justify-center gap-3">
-            <div className="flex items-center justify-between font-mono text-xs">
-              <span className="text-[var(--ch-audio)] font-bold flex items-center gap-1">
-                <Volume2 size={12} /> ACOUSTIC TRANSFORMER (CH-A)
-              </span>
-              <span className="text-[var(--ch-visual)] font-bold flex items-center gap-1">
-                <Video size={12} /> SPATIAL ViT (CH-V)
+          {/* Inference Engine Telemetry Card */}
+          <div className="p-4 sm:p-[18px] rounded-[12px] bg-[#171F2D] border border-[#253247] flex flex-col gap-3.5">
+            <div className="flex items-center justify-between border-b border-[#253247] pb-2.5">
+              <div className="flex items-center gap-2">
+                <Cpu size={15} className="text-[#648CFF]" />
+                <h3 className="text-[13px] sm:text-sm font-semibold text-[#E8EDF5]">
+                  Inference Engine
+                </h3>
+              </div>
+              <span className="h-[22px] inline-flex items-center gap-1 px-2 rounded-[6px] text-[10px] font-medium bg-[#35C99A]/15 text-[#35C99A] border border-[#35C99A]/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#35C99A]" />
+                {readyQuery.data?.status === 'ready' ? 'READY' : 'ONLINE'}
               </span>
             </div>
 
-            {/* Modality Bar: Cyan for Audio, Cobalt for Visual */}
-            <div className="w-full h-3 rounded-xs overflow-hidden flex bg-[var(--black-950)] border border-[var(--line)]">
-              <div
-                style={{ width: '50%' }}
-                className="h-full bg-[var(--ch-audio)]"
-                title="Audio Modality Channel"
-              />
-              <div
-                style={{ width: '50%' }}
-                className="h-full bg-[var(--ch-visual)]"
-                title="Visual Modality Channel"
-              />
-            </div>
-
-            <div className="font-sans text-xs text-[var(--text-400)] leading-relaxed">
-              Per Section 4.4, DWF weights (w_audio, w_video) are computed dynamically per input clip based on cross-modal attention confidence. Open any completed dossier to inspect its synchronized temporal trajectory.
-            </div>
-
-            {latestDoneId && (
-              <Link
-                to={`/app/analyses/${latestDoneId}`}
-                className="font-mono text-[11px] text-[var(--cobalt-300)] hover:text-white uppercase flex items-center gap-1 pt-1"
-              >
-                <span>INSPECT LATEST REPORT DWF WEIGHTS</span>
-                <ArrowUpRight size={12} />
-              </Link>
-            )}
-          </div>
-        </BentoCell>
-
-        {/* Cell 5: Recent Analyses (colSpan 6) */}
-        <BentoCell
-          label="AUDIT DOSSIER // RECENT SCANS"
-          status={`SHOWING ${analyses.slice(0, 4).length}`}
-          colSpan={6}
-          className="min-h-[300px]"
-        >
-          <div className="flex-1 flex flex-col gap-2 overflow-y-auto">
-            {analyses.length === 0 ? (
-              <div className="py-12 text-center font-mono text-xs text-[var(--text-400)]">
-                NO RECENT ANALYSES RECORDED
+            <div className="flex flex-col gap-2 text-xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#253247]/50">
+                <span className="text-[#91A0B8]">Architecture</span>
+                <span className="font-mono text-xs font-semibold text-[#E8EDF5]">AVT²-DWF</span>
               </div>
-            ) : (
-              analyses.slice(0, 4).map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/app/analyses/${item.id}`}
-                  className="p-2.5 bg-[var(--black-950)] border border-[var(--line)] rounded-[var(--radius-sm)] flex items-center justify-between gap-3 hover:border-[var(--line-strong)] transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="font-mono text-xs text-[var(--text-100)] truncate font-medium">
-                      {item.original_name}
-                    </span>
-                    <span className="font-mono text-[10px] text-[var(--text-500)]">
-                      {formatRelativeTime(item.created_at)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {item.verdict === 'FAKE' && (
-                      <Badge variant="fake" size="sm" hazard>
-                        FAKE
-                      </Badge>
-                    )}
-                    {item.verdict === 'AUTHENTIC' && (
-                      <Badge variant="authentic" size="sm">
-                        AUTHENTIC
-                      </Badge>
-                    )}
-                    {(!item.verdict || item.verdict === 'INCONCLUSIVE') && (
-                      <Badge variant="inconclusive" size="sm">
-                        INCONCL
-                      </Badge>
-                    )}
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </BentoCell>
 
-        {/* Cell 6: Threat Pulse Radar Mini (colSpan 3) */}
-        <BentoCell
-          label="THREAT PULSE // GDELT"
-          status="LIVE"
-          colSpan={3}
-          className="min-h-[300px]"
-        >
-          <div className="flex-1 flex flex-col gap-2 overflow-y-auto">
-            {threatsQuery.data?.items.slice(0, 3).map((threat, idx) => (
-              <article key={idx} className="p-2 bg-[var(--black-950)] border border-[var(--line)] rounded-[var(--radius-sm)] flex flex-col gap-1">
-                <span className="font-mono text-[9px] text-[var(--cobalt-300)] uppercase font-semibold">
-                  {threat.domain || 'OSINT'}
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#253247]/50">
+                <span className="text-[#91A0B8]">Checkpoint</span>
+                <span className="font-mono text-[11px] text-[#648CFF] truncate max-w-[130px]">
+                  {modelQuery.data?.checkpoint_hash
+                    ? modelQuery.data.checkpoint_hash.slice(0, 12) + '...'
+                    : 'LOCAL_WEIGHTS'}
                 </span>
-                <a
-                  href={threat.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-sans text-[11px] text-[var(--text-100)] hover:text-[var(--lime-400)] line-clamp-2 leading-snug"
-                >
-                  {threat.title}
-                </a>
-              </article>
-            ))}
+              </div>
+
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#253247]/50">
+                <span className="text-[#91A0B8]">Database Mode</span>
+                <span className="font-mono text-xs text-[#35C99A] font-medium">
+                  {readyQuery.data?.db_connected ? 'SQLite (WAL)' : 'DISCONNECTED'}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1.5 pt-0.5">
+                <span className="text-[#91A0B8] text-[11px]">Active Modality Channels</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="p-2 rounded-[8px] bg-[#111927] border border-[#253247] flex items-center gap-1.5 text-[#E8EDF5]">
+                    <Video size={13} className="text-[#648CFF]" />
+                    <span className="font-medium">ViT-B16</span>
+                  </div>
+                  <div className="p-2 rounded-[8px] bg-[#111927] border border-[#253247] flex items-center gap-1.5 text-[#E8EDF5]">
+                    <Volume2 size={13} className="text-[#648CFF]" />
+                    <span className="font-medium">Log-Mel</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Resource Shortcuts */}
+          <div className="p-3 rounded-[12px] bg-[#171F2D]/60 border border-[#253247] flex items-center justify-between text-xs text-[#91A0B8]">
             <Link
-              to="/app/intel"
-              className="mt-auto pt-2 font-mono text-[10px] text-[var(--cobalt-400)] hover:text-[var(--cobalt-300)] uppercase text-right"
+              to="/app/library"
+              className="flex items-center gap-1.5 hover:text-[#E8EDF5] transition-colors"
             >
-              VIEW RADAR [CH-05] ↗
+              <FolderArchive size={14} className="text-[#648CFF]" />
+              <span>Reference Corpus</span>
+            </Link>
+            <span className="text-[#253247]">|</span>
+            <Link
+              to="/app/history"
+              className="flex items-center gap-1.5 hover:text-[#E8EDF5] transition-colors"
+            >
+              <History size={14} className="text-[#648CFF]" />
+              <span>Full Audit Ledger</span>
             </Link>
           </div>
-        </BentoCell>
-
-        {/* Cell 7: Research Radar Mini (colSpan 3) */}
-        <BentoCell
-          label="RESEARCH // arXiv"
-          status="ATOM"
-          colSpan={3}
-          className="min-h-[300px]"
-        >
-          <div className="flex-1 flex flex-col gap-2 overflow-y-auto">
-            {researchQuery.data?.items.slice(0, 2).map((paper, idx) => (
-              <article key={idx} className="p-2 bg-[var(--black-950)] border border-[var(--line)] rounded-[var(--radius-sm)] flex flex-col gap-1">
-                <span className="font-mono text-[9px] text-[var(--lime-400)] font-semibold">
-                  arXiv:{paper.arxiv_id}
-                </span>
-                <a
-                  href={paper.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-sans text-[11px] text-[var(--text-100)] hover:text-[var(--lime-400)] line-clamp-2 leading-snug"
-                >
-                  {paper.title}
-                </a>
-              </article>
-            ))}
-            <Link
-              to="/app/intel"
-              className="mt-auto pt-2 font-mono text-[10px] text-[var(--cobalt-400)] hover:text-[var(--cobalt-300)] uppercase text-right"
-            >
-              VIEW PAPERS [CH-05] ↗
-            </Link>
-          </div>
-        </BentoCell>
-      </BentoGrid>
+        </div>
+      </div>
     </div>
   );
 };

@@ -9,7 +9,6 @@ import { ReportPage } from '@/features/report/ReportPage';
 import { HistoryPage } from '@/features/history/HistoryPage';
 import { LibraryPage } from '@/features/library/LibraryPage';
 import { IntelPage } from '@/features/intel/IntelPage';
-import { ModelCardPage } from '@/features/model/ModelCardPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 
 export const router = createBrowserRouter([
@@ -58,7 +57,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'model',
-            element: <ModelCardPage />,
+            element: <Navigate to="/app" replace />,
           },
           {
             path: 'settings',

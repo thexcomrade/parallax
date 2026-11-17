@@ -49,11 +49,15 @@ playwright/.cache/
 
 # Storage & Local Databases
 storage/
+/datasets/raw/
+/datasets/processed/
 *.db
 *.sqlite
 *.sqlite3
 
-# Model weights
+# Model weights & Checkpoints
+checkpoints/*.pt
+checkpoints/**/*.pt
 weights/*.pt
 weights/*.bin
 backend/app/ml/weights/*.pt

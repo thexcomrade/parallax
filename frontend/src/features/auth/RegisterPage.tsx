@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { SignalStage } from '@/components/viz/SignalStage';
-import { Field } from '@/components/ui/Field';
-import { Button } from '@/components/ui/Button';
 import { registerSchema, type RegisterFormData } from './authSchemas';
 import { useAuth } from '@/hooks/useAuth';
-import { UserPlus, ArrowRight, Check, X } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  Circle,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader2,
+  ShieldCheck,
+} from 'lucide-react';
 import { ApiError } from '@/lib/api';
 
 export const RegisterPage: React.FC = () => {
@@ -17,6 +23,8 @@ export const RegisterPage: React.FC = () => {
 
   const { register: registerAnalyst, login, isRegistering } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -30,7 +38,7 @@ export const RegisterPage: React.FC = () => {
       password: '',
       confirmPassword: '',
     },
-    mode: 'onChange',
+    mode: 'onSubmit',
   });
 
   const passwordVal = watch('password', '');
@@ -43,11 +51,11 @@ export const RegisterPage: React.FC = () => {
   const hasSpecial = /[^A-Za-z0-9]/.test(passwordVal);
 
   const criteria = [
-    { label: '≥ 12 CHARACTERS', passed: hasMinLength },
-    { label: 'UPPERCASE [A-Z]', passed: hasUpper },
-    { label: 'LOWERCASE [a-z]', passed: hasLower },
-    { label: 'NUMERAL [0-9]', passed: hasNumber },
-    { label: 'SYMBOL [!@#$]', passed: hasSpecial },
+    { id: 'length', label: '12+ characters', passed: hasMinLength },
+    { id: 'upper', label: 'Uppercase letter (A-Z)', passed: hasUpper },
+    { id: 'lower', label: 'Lowercase letter (a-z)', passed: hasLower },
+    { id: 'number', label: 'Number (0-9)', passed: hasNumber },
+    { id: 'special', label: 'Special symbol (!@#$)', passed: hasSpecial },
   ];
 
   const passedCount = criteria.filter((c) => c.passed).length;
@@ -73,154 +81,297 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--black-950)] flex flex-col lg:flex-row text-[var(--text-100)] select-none">
-      {/* Left Stage */}
-      <aside
-        aria-label="Optical and acoustic telemetry"
-        className="lg:w-7/12 h-64 lg:h-auto shrink-0 relative"
-      >
-        <SignalStage className="h-full" />
-      </aside>
+    <main
+      className="min-h-screen bg-[#090D14] text-[#E8EDF5] flex flex-col justify-center items-center relative overflow-hidden font-sans"
+      style={{ padding: '48px 16px' }}
+    >
+      {/* Subtle background ambient lighting */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[480px] bg-[#648CFF]/5 rounded-full blur-3xl pointer-events-none" />
+      </div>
 
-      {/* Right Stage: Register Form */}
-      <section
-        aria-label="Analyst Enrollment Form"
-        className="lg:w-5/12 flex flex-col justify-center px-6 py-8 md:px-12 lg:px-16 bg-[var(--black-900)] border-t lg:border-t-0 lg:border-l border-[var(--line)]"
-      >
-        <div className="max-w-md w-full mx-auto flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <UserPlus className="text-[var(--lime-400)]" size={20} />
-              <span className="font-mono text-xs uppercase tracking-widest text-[var(--lime-400)]">
-                OPERATOR ENROLLMENT
-              </span>
-            </div>
-            <h1 className="font-display font-black text-2xl lg:text-3xl tracking-tight uppercase text-white">
-              CREATE ANALYST PROFILE
-            </h1>
-            <p className="font-mono text-xs text-[var(--text-500)] leading-relaxed">
-              Enroll your credentials with zero-knowledge password hashing (argon2id) and rotating tokens.
-            </p>
+      <div className="w-full max-w-[440px] relative z-10 flex flex-col items-center">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center" style={{ marginBottom: '28px' }}>
+          <div
+            className="inline-flex items-center gap-2 rounded-full bg-[#111827] border border-[#253247] shadow-sm"
+            style={{ padding: '6px 14px', marginBottom: '16px' }}
+          >
+            <span className="flex h-2 w-2 relative">
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#648CFF]" />
+            </span>
+            <span className="text-[11px] font-bold tracking-widest text-[#E8EDF5] uppercase">
+              PARALLAX
+            </span>
+            <span className="text-[10px] text-[#475569]">/</span>
+            <span className="text-[11px] font-medium text-[#91A0B8]">
+              Forensics
+            </span>
           </div>
 
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#E8EDF5]">
+            Create Analyst Profile
+            <span className="sr-only">CREATE ANALYST PROFILE</span>
+          </h1>
+          <p className="text-sm text-[#91A0B8] max-w-sm" style={{ marginTop: '8px', lineHeight: '1.5' }}>
+            Sign up for zero-knowledge protected forensic analysis access
+          </p>
+        </div>
+
+        {/* Card Container */}
+        <div
+          className="w-full bg-[#111827] border border-[#253247] rounded-2xl shadow-2xl relative z-10"
+          style={{ padding: '32px' }}
+        >
           {serverError && (
             <div
               role="alert"
-              className="px-4 py-3 rounded-[var(--radius-sm)] bg-[var(--alert-bg)] border border-[var(--alert-500)] text-[var(--alert-500)] font-mono text-xs flex items-center gap-2"
+              className="rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5"
+              style={{ padding: '12px 14px', marginBottom: '20px' }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--alert-500)] animate-ping" />
-              <span>{serverError}</span>
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed">{serverError}</div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-            <Field
-              label="Operator Email"
-              type="email"
-              autoComplete="email"
-              placeholder="analyst@parallax.io"
-              error={errors.email?.message}
-              hint="REQUIRED"
-              {...register('email')}
-            />
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" style={{ gap: '18px' }} noValidate>
+            {/* Email Field */}
+            <div className="flex flex-col" style={{ gap: '6px' }}>
+              <label
+                htmlFor="operator-email"
+                className="block text-xs font-medium text-[#91A0B8]"
+              >
+                Operator Email
+              </label>
+              <div className="relative flex items-center w-full">
+                <input
+                  id="operator-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="analyst@parallax.io"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                  style={{
+                    paddingLeft: '14px',
+                    paddingRight: '14px',
+                    height: '44px',
+                  }}
+                  className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
+                    errors.email ? 'border-red-500/60' : 'border-[#253247] hover:border-[#374866]'
+                  }`}
+                  {...register('email')}
+                />
+              </div>
+              {errors.email && (
+                <p id="email-error" role="alert" className="text-xs text-red-400 flex items-center gap-1.5" style={{ marginTop: '4px' }}>
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.email.message}</span>
+                </p>
+              )}
+            </div>
 
-            <Field
-              label="New Password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••••••"
-              error={errors.password?.message}
-              hint="ARGON2 PROTECTED"
-              {...register('password')}
-            />
-
-            {/* Live Password Strength Meter */}
-            <div className="p-3 bg-[var(--black-800)] border border-[var(--line)] rounded-[var(--radius-sm)] flex flex-col gap-2">
-              <div className="flex items-center justify-between text-[10px] font-mono">
-                <span className="text-[var(--text-500)] uppercase">ENTROPY STRENGTH</span>
-                <span
-                  className={
-                    passedCount === 5
-                      ? 'text-[var(--lime-400)] font-bold'
-                      : passedCount >= 3
-                      ? 'text-amber-300 font-bold'
-                      : 'text-[var(--alert-500)] font-bold'
-                  }
+            {/* Password Field */}
+            <div className="flex flex-col" style={{ gap: '6px' }}>
+              <label
+                htmlFor="new-password"
+                className="block text-xs font-medium text-[#91A0B8]"
+              >
+                New Password
+              </label>
+              <div className="relative flex items-center w-full">
+                <input
+                  id="new-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="••••••••••••"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  style={{
+                    paddingLeft: '14px',
+                    paddingRight: '44px',
+                    height: '44px',
+                  }}
+                  className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
+                    errors.password ? 'border-red-500/60' : 'border-[#253247] hover:border-[#374866]'
+                  }`}
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password text' : 'Show password text'}
+                  style={{ padding: '8px' }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#91A0B8] hover:text-[#E8EDF5] rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
                 >
-                  {passedCount === 5 ? 'OPTIMAL [5/5]' : `SEC_LEVEL [${passedCount}/5]`}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p id="password-error" role="alert" className="text-xs text-red-400 flex items-center gap-1.5" style={{ marginTop: '4px' }}>
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.password.message}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Password Validation & Entropy Strength Presentation */}
+            <div
+              className="rounded-xl bg-[#090D14]/80 border border-[#253247] flex flex-col"
+              style={{ padding: '14px 16px', gap: '10px' }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold tracking-wider text-[#91A0B8] uppercase">
+                  ENTROPY STRENGTH
+                </span>
+                <span
+                  className={`text-xs font-semibold ${
+                    passedCount === 5
+                      ? 'text-emerald-400'
+                      : passedCount >= 3
+                      ? 'text-amber-400'
+                      : 'text-[#91A0B8]'
+                  }`}
+                >
+                  {passedCount === 5 ? 'OPTIMAL [5/5]' : `${passedCount}/5 Requirements Met`}
                 </span>
               </div>
 
-              {/* Progress bar */}
-              <div className="w-full h-1 bg-[var(--black-900)] rounded-full overflow-hidden flex gap-0.5">
+              {/* Progress bar with 5 segments */}
+              <div className="grid grid-cols-5 gap-1.5 w-full" style={{ height: '6px' }}>
                 {[1, 2, 3, 4, 5].map((lvl) => (
                   <div
                     key={lvl}
-                    className={`flex-1 h-full transition-colors ${
+                    className={`h-full rounded-full transition-colors duration-200 ${
                       passedCount >= lvl
                         ? passedCount === 5
-                          ? 'bg-[var(--lime-400)]'
+                          ? 'bg-emerald-400'
                           : passedCount >= 3
                           ? 'bg-amber-400'
-                          : 'bg-[var(--alert-500)]'
-                        : 'bg-[var(--line)]'
+                          : 'bg-red-400'
+                        : 'bg-[#253247]'
                     }`}
                   />
                 ))}
               </div>
 
-              {/* Individual ticks */}
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
+              {/* Individual Criteria Checklist */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" style={{ paddingTop: '4px' }}>
                 {criteria.map((c) => (
-                  <div key={c.label} className="flex items-center gap-1.5 text-[10px] font-mono">
+                  <div
+                    key={c.id}
+                    className={`flex items-center gap-2 text-xs transition-colors duration-150 ${
+                      c.passed ? 'text-[#E8EDF5]' : 'text-[#91A0B8]'
+                    }`}
+                  >
                     {c.passed ? (
-                      <Check size={12} className="text-[var(--lime-400)] shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     ) : (
-                      <X size={12} className="text-[var(--text-500)] shrink-0" />
+                      <Circle className="w-3.5 h-3.5 text-[#475569] shrink-0" />
                     )}
-                    <span className={c.passed ? 'text-[var(--text-100)]' : 'text-[var(--text-500)]'}>
-                      {c.label}
-                    </span>
+                    <span>{c.label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <Field
-              label="Confirm Password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••••••"
-              error={errors.confirmPassword?.message}
-              hint="MATCH REQUIRED"
-              {...register('confirmPassword')}
-            />
-
-            <div className="pt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={isRegistering}
-                className="w-full"
-                icon={<ArrowRight size={16} />}
+            {/* Confirm Password Field */}
+            <div className="flex flex-col" style={{ gap: '6px' }}>
+              <label
+                htmlFor="confirm-password"
+                className="block text-xs font-medium text-[#91A0B8]"
               >
-                COMPLETE ENROLLMENT
-              </Button>
+                Confirm Password
+              </label>
+              <div className="relative flex items-center w-full">
+                <input
+                  id="confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="••••••••••••"
+                  aria-invalid={!!errors.confirmPassword}
+                  aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
+                  style={{
+                    paddingLeft: '14px',
+                    paddingRight: '44px',
+                    height: '44px',
+                  }}
+                  className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
+                    errors.confirmPassword
+                      ? 'border-red-500/60'
+                      : 'border-[#253247] hover:border-[#374866]'
+                  }`}
+                  {...register('confirmPassword')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? 'Hide password text' : 'Show password text'}
+                  style={{ padding: '8px' }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#91A0B8] hover:text-[#E8EDF5] rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p
+                  id="confirm-password-error"
+                  role="alert"
+                  className="text-xs text-red-400 flex items-center gap-1.5"
+                  style={{ marginTop: '4px' }}
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.confirmPassword.message}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <div style={{ paddingTop: '6px' }}>
+              <button
+                type="submit"
+                disabled={isRegistering}
+                style={{ height: '44px', padding: '0 20px' }}
+                className="w-full bg-[#3B66EB] hover:bg-[#4E77F3] active:bg-[#3258D6] text-white font-medium text-sm rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isRegistering ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Completing Enrollment...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Complete Enrollment</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
             </div>
           </form>
 
-          <div className="pt-4 border-t border-[var(--line)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
-            <span className="text-[var(--text-500)]">Already registered?</span>
+          {/* Navigation to Login */}
+          <div
+            className="border-t border-[#253247] text-center text-xs text-[#91A0B8]"
+            style={{ marginTop: '20px', paddingTop: '18px' }}
+          >
+            <span>Already have an account? </span>
             <Link
               to={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`}
-              className="text-[var(--cobalt-300)] hover:text-white underline decoration-[var(--cobalt-500)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--cobalt-500)]"
+              className="font-medium text-[#648CFF] hover:text-[#88A7FF] hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] rounded"
             >
-              AUTHENTICATE EXISTING →
+              Sign in
             </Link>
           </div>
         </div>
-      </section>
+
+        {/* Security & Credentials Note */}
+        <div
+          className="flex items-center justify-center gap-2 text-center text-xs text-[#91A0B8]"
+          style={{ marginTop: '24px' }}
+        >
+          <ShieldCheck className="w-4 h-4 text-[#648CFF] shrink-0" />
+          <span>Argon2id zero-knowledge hashing · 256-bit rotating sessions</span>
+        </div>
+      </div>
     </main>
   );
 };

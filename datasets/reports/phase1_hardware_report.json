@@ -1,0 +1,16 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "python_version": "3.13.2",
+  "pytorch_version": "2.15.0+cpu",
+  "cuda_available": false,
+  "cuda_version": null,
+  "device_count": 0,
+  "gpu_model": "CPU Only (Host: Intel Core i5-10300H)",
+  "vram_gb": 0.0,
+  "total_ram_gb": 15.84,
+  "available_ram_gb": 4.29,
+  "estimated_vram_requirement_gb": 1.5,
+  "vram_fit_assessment": "CPU_FALLBACK",
+  "fp16_amp_supported": false,
+  "active_compute_mode": "cpu"
+}

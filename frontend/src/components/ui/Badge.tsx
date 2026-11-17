@@ -6,36 +6,60 @@ export type BadgeVariant =
   | 'fake'
   | 'inconclusive'
   | 'neutral'
-  | 'cobalt';
+  | 'cobalt'
+  | 'cyan'
+  | 'warning';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
   hazard?: boolean;
+  dot?: boolean;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
   variant = 'neutral',
-  size = 'md',
+  size = 'sm',
   hazard = false,
+  dot = false,
   className,
   children,
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-mono font-bold uppercase tracking-wider rounded-xs select-none';
+    'inline-flex items-center justify-center font-mono font-bold uppercase tracking-wider rounded-[var(--radius-xs)] select-none whitespace-nowrap';
 
   const sizeStyles = {
-    sm: 'px-1.5 py-0.5 text-[10px] leading-tight',
-    md: 'px-2.5 py-1 text-xs leading-none',
+    xs: 'px-1.5 py-0.5 text-[9px] gap-1 leading-tight',
+    sm: 'px-2 py-0.5 text-[10px] gap-1.5 leading-tight',
+    md: 'px-2.5 py-1 text-xs gap-1.5 leading-none',
   }[size];
 
   const variantStyles = {
-    authentic: 'bg-[var(--lime-400)] text-[var(--lime-ink)]',
-    fake: 'bg-[var(--alert-500)] text-[var(--black-950)] font-black',
-    inconclusive: 'bg-[var(--black-800)] text-[var(--text-300)] border border-[var(--line-strong)]',
-    neutral: 'bg-[var(--black-800)] text-[var(--text-400)] border border-[var(--line)]',
-    cobalt: 'bg-[var(--cobalt-500)] text-white',
+    authentic:
+      'bg-[var(--lime-400)]/15 text-[var(--lime-400)] border border-[var(--lime-400)]/30',
+    fake:
+      'bg-[var(--alert-500)]/15 text-[var(--alert-500)] border border-[var(--alert-500)]/35 font-black',
+    inconclusive:
+      'bg-[var(--black-800)] text-[var(--text-300)] border border-[var(--border-strong)]',
+    neutral:
+      'bg-[var(--surface-elevated)] text-[var(--text-400)] border border-[var(--border-default)]',
+    cobalt:
+      'bg-[var(--cobalt-500)]/15 text-[var(--cobalt-300)] border border-[var(--cobalt-500)]/30',
+    cyan:
+      'bg-[var(--cyan)]/15 text-[var(--cyan)] border border-[var(--cyan)]/30',
+    warning:
+      'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+  }[variant];
+
+  const dotColor = {
+    authentic: 'bg-[var(--lime-400)]',
+    fake: 'bg-[var(--alert-500)]',
+    inconclusive: 'bg-amber-400',
+    neutral: 'bg-[var(--text-400)]',
+    cobalt: 'bg-[var(--cobalt-400)]',
+    cyan: 'bg-[var(--cyan)]',
+    warning: 'bg-amber-400',
   }[variant];
 
   return (
@@ -45,11 +69,17 @@ export const Badge: React.FC<BadgeProps> = ({
         sizeStyles,
         variantStyles,
         hazard && variant === 'fake' && 'hazard-stripes',
-        className
+        className,
       )}
       {...props}
     >
-      {children}
+      {dot && (
+        <span
+          className={clsx('w-1.5 h-1.5 rounded-full shrink-0', dotColor)}
+          aria-hidden="true"
+        />
+      )}
+      <span>{children}</span>
     </span>
   );
 };

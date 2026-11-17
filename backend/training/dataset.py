@@ -57,19 +57,39 @@ class MultimodalDataset(Dataset[dict[str, Any]]):
         if not self.manifest_path.exists():
             raise FileNotFoundError(f"Manifest not found: {self.manifest_path}")
 
+        repo_root = Path(__file__).resolve().parent.parent.parent
+
+        def normalize_split(s: str) -> str:
+            s_clean = s.strip().lower()
+            return "val" if s_clean in ("val", "validation") else s_clean
+
+        target_split = normalize_split(self.split) if self.split is not None else None
+
         with open(self.manifest_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 row_split = row.get("split", "train")
-                if self.split is not None and row_split != self.split:
+                if target_split is not None and normalize_split(row_split) != target_split:
                     continue
+
+                raw_path_str = (
+                    row.get("clip_path") or row.get("relative_path") or row.get("filename", "")
+                )
+                p = Path(raw_path_str)
+                if not p.is_absolute():
+                    p = (repo_root / p).resolve()
+
+                sample_id = row.get("sample_id") or p.stem
+                raw_label = row.get("label_id") or row.get("label") or "0"
+                label_int = int(str(raw_label))
 
                 self.records.append(
                     {
-                        "clip_path": row["clip_path"],
-                        "label": int(row["label"]),
-                        "identity": row.get("identity", "unknown"),
-                        "audio_present": row.get("audio_present", "True").lower() == "true",
+                        "sample_id": sample_id,
+                        "clip_path": str(p),
+                        "label": label_int,
+                        "identity": row.get("identity") or sample_id,
+                        "audio_present": str(row.get("audio_present", "True")).lower() == "true",
                         "split": row_split,
                     }
                 )
@@ -87,31 +107,44 @@ class MultimodalDataset(Dataset[dict[str, Any]]):
     def __getitem__(self, idx: int) -> dict[str, Any]:
         rec = self.records[idx]
         clip_path = Path(rec["clip_path"])
+        sample_id = str(rec.get("sample_id", clip_path.stem))
         label = int(rec["label"])
         identity = str(rec["identity"])
 
-        # 1. Video extraction using inference preprocessing
-        video_res = extract_video_frames(
-            clip_path,
-            target_count=self.sample_frames,
-            window_size=self.window_size,
-            stride=self.window_stride,
-        )
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        processed_dir = repo_root / "datasets" / "processed"
+        video_cache = processed_dir / "video" / f"{sample_id}_video.pt"
+        audio_cache = processed_dir / "audio" / f"{sample_id}_audio.pt"
 
-        # 2. Audio extraction
-        audio_res = extract_audio_features(clip_path)
+        # Check if preprocessed cached tensors are available
+        if video_cache.is_file() and audio_cache.is_file():
+            video_windows: torch.Tensor = torch.load(video_cache, weights_only=True)
+            audio_data: dict[str, Any] = torch.load(audio_cache, weights_only=True)
+            audio_segments: torch.Tensor = audio_data["audio_segments"]
+            audio_mask: torch.Tensor = audio_data["audio_mask"]
+        else:
+            # 1. Video extraction using inference preprocessing
+            video_res = extract_video_frames(
+                clip_path,
+                target_count=self.sample_frames,
+                window_size=self.window_size,
+                stride=self.window_stride,
+            )
 
-        # 3. Multimodal temporal alignment
-        aligned = align_audio_video(
-            video_res,
-            audio_res,
-            window_size=self.window_size,
-            stride=self.window_stride,
-        )
+            # 2. Audio extraction
+            audio_res = extract_audio_features(clip_path)
 
-        video_windows = aligned.video_windows  # [K, 16, 3, 224, 224]
-        audio_segments = aligned.audio_segments  # [K, 104, 100]
-        audio_mask = aligned.audio_mask  # [K]
+            # 3. Multimodal temporal alignment
+            aligned = align_audio_video(
+                video_res,
+                audio_res,
+                window_size=self.window_size,
+                stride=self.window_stride,
+            )
+
+            video_windows = aligned.video_windows  # [K, 16, 3, 224, 224]
+            audio_segments = aligned.audio_segments  # [K, 104, 100]
+            audio_mask = aligned.audio_mask  # [K]
 
         # 4. Apply augmentations if training
         if self.augmenter is not None:

@@ -77,12 +77,12 @@ test.describe('Phase 3: Auth & Protected Routes', () => {
 
     // Should redirect to /app (Dashboard)
     await expect(page).toHaveURL(/\/app/);
-    await expect(page.locator('h1')).toContainText('Forensic Command Bench');
+    await expect(page.locator('h1')).toContainText('Forensic Command Overview');
 
     const viewport = page.viewportSize();
     const width = viewport ? viewport.width : 1280;
     if (width < 768) {
-      await expect(page.locator('header').getByRole('button', { name: /EXIT/i })).toBeVisible();
+      await expect(page.locator('header').getByRole('button', { name: /Open navigation menu|Close navigation menu/i })).toBeVisible();
     } else {
       await expect(page.locator('header').getByText(email)).toBeVisible();
     }
@@ -96,16 +96,22 @@ test.describe('Phase 3: Auth & Protected Routes', () => {
     // Reload page: in-memory token is cleared, but silent refresh uses HttpOnly cookie to restore session!
     await page.reload();
     await expect(page).toHaveURL(/\/app/);
-    await expect(page.locator('h1')).toContainText('Forensic Command Bench');
+    await expect(page.locator('h1')).toContainText('Forensic Command Overview');
 
     if (width < 768) {
-      await expect(page.locator('header').getByRole('button', { name: /EXIT/i })).toBeVisible();
+      await expect(page.locator('header').getByRole('button', { name: /Open navigation menu|Close navigation menu/i })).toBeVisible();
     } else {
       await expect(page.locator('header').getByText(email)).toBeVisible();
     }
 
-    // Sign out
-    await page.getByRole('button', { name: /Sign out|EXIT/i }).click();
+    // Sign out via profile menu dropdown
+    const profileBtn = page.getByRole('button', { name: /Open operator profile options/i });
+    if (await profileBtn.isVisible()) {
+      await profileBtn.click();
+      await page.getByRole('menuitem', { name: /Sign Out/i }).click();
+    } else {
+      await page.getByRole('button', { name: /Sign out|EXIT/i }).click();
+    }
 
     // Should redirect to login when accessing /app
     await page.goto('/app');

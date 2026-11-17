@@ -1,15 +1,13 @@
-/**
- * Forensic video upload dropzone.
- * Built to instrument-panel standards: viewfinder corners, mono readouts, client-side pre-checks.
- */
-
 import React, { useRef, useState, useCallback } from 'react';
-import { Button } from '../ui/Button';
+import { clsx } from 'clsx';
+import { Upload, AlertCircle, FolderOpen } from 'lucide-react';
 
 interface DropzoneProps {
   onFileSelected: (file: File) => void;
   isUploading?: boolean;
   disabled?: boolean;
+  className?: string;
+  onErrorChange?: (error: string | null) => void;
 }
 
 const MAX_SIZE_MB = 200;
@@ -20,30 +18,40 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   onFileSelected,
   isUploading = false,
   disabled = false,
+  className,
+  onErrorChange,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const setValidationError = useCallback(
+    (msg: string | null) => {
+      setError(msg);
+      onErrorChange?.(msg);
+    },
+    [onErrorChange],
+  );
+
   const validateAndSelect = useCallback(
     (file: File) => {
-      setError(null);
+      setValidationError(null);
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-        setError(`Unsupported format. Expected: ${ACCEPTED_EXTENSIONS.join(', ')}`);
+        setValidationError(`Unsupported file format. Accepted formats: ${ACCEPTED_EXTENSIONS.join(', ')}`);
         return;
       }
       if (file.size > MAX_BYTES) {
-        setError(`File size exceeds ${MAX_SIZE_MB}MB limit.`);
+        setValidationError(`File size exceeds server-enforced limit of ${MAX_SIZE_MB} MB.`);
         return;
       }
       if (file.size === 0) {
-        setError('Selected file is empty (0 bytes).');
+        setValidationError('Selected media file is empty (0 bytes).');
         return;
       }
       onFileSelected(file);
     },
-    [onFileSelected],
+    [onFileSelected, setValidationError],
   );
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -52,7 +60,8 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     setIsDragOver(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
     setIsDragOver(false);
   };
 
@@ -71,75 +80,99 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     if (file) {
       validateAndSelect(file);
     }
+    e.target.value = '';
+  };
+
+  const openFileDialog = () => {
+    if (!disabled && !isUploading) {
+      inputRef.current?.click();
+    }
   };
 
   return (
     <div
+      role="region"
+      aria-label="Media upload dropzone"
+      tabIndex={disabled || isUploading ? -1 : 0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openFileDialog();
+        }
+      }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => !disabled && !isUploading && inputRef.current?.click()}
-      className={`relative flex flex-col items-center justify-center p-8 sm:p-12 rounded-lg border transition-colors cursor-pointer ${
+      onClick={openFileDialog}
+      className={clsx(
+        'w-full min-h-[260px] sm:min-h-[275px] max-h-[300px] rounded-[14px] border border-dashed transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center p-6 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]',
         isDragOver
-          ? 'border-cobalt-500 bg-black-800/80'
-          : 'border-line hover:border-line-strong bg-black-900/60'
-      } ${disabled || isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          ? 'border-[#648CFF] bg-[#172338]/60 shadow-[0_0_24px_rgba(100,140,255,0.12)]'
+          : 'border-[#34445C] bg-[#111927] hover:border-[#4B5E7D] hover:bg-[#131B29]',
+        (disabled || isUploading) && 'opacity-50 cursor-not-allowed',
+        className,
+      )}
     >
-      {/* Viewfinder corner crop marks */}
-      <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-cobalt-500/60" />
-      <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-cobalt-500/60" />
-      <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-cobalt-500/60" />
-      <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-cobalt-500/60" />
-
+      <label htmlFor="media-file-input" className="sr-only">
+        Choose video file
+      </label>
       <input
         ref={inputRef}
         type="file"
+        id="media-file-input"
         accept={ACCEPTED_EXTENSIONS.join(',')}
-        className="hidden"
+        className="sr-only"
         onChange={handleFileChange}
         disabled={disabled || isUploading}
+        tabIndex={-1}
       />
 
-      {/* Sensor icon / viewfinder reticle */}
-      <div className="w-12 h-12 rounded-full border border-cobalt-500/40 flex items-center justify-center mb-4 text-cobalt-400">
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
+      {/* 1. Compact upload icon container (48-52px, 22-24px icon) */}
+      <div className="w-12 h-12 rounded-[12px] bg-[#171F2D] border border-[#253247] flex items-center justify-center text-[#648CFF] mb-3 transition-transform duration-200">
+        <Upload className="w-6 h-6" />
       </div>
 
-      <div className="font-mono text-xs uppercase tracking-widest text-cobalt-300 mb-2">
-        CH-IN // SENSOR DROPZONE
-      </div>
+      {/* 2. Main instruction */}
+      <h2 className="text-base sm:text-[17px] font-semibold text-[#E8EDF5] tracking-tight mb-1">
+        {isDragOver ? 'Drop your video to upload' : 'Drop your video here'}
+      </h2>
 
-      <p className="font-display text-lg text-text-100 text-center font-medium mb-1">
-        {isUploading ? 'Streaming payload to forensic pipeline…' : 'Drop video clip or select local file'}
+      {/* 3. Supporting text */}
+      <p className="text-xs sm:text-[13px] text-[#91A0B8] mb-4">
+        or browse files from your device
       </p>
 
-      <div className="font-mono text-[11px] text-text-500 uppercase tracking-wider mb-6 text-center">
-        MP4, MOV, WEBM, AVI · MAX {MAX_SIZE_MB}MB · UP TO 60 SEC
+      {/* 4. Browse Files button (content-fit, 38-40px height, 13px font) */}
+      <button
+        type="button"
+        disabled={disabled || isUploading}
+        onClick={(e) => {
+          e.stopPropagation();
+          openFileDialog();
+        }}
+        aria-label="Browse Files — Upload video file for forensic deepfake analysis"
+        className="h-[38px] w-fit px-4 rounded-[8px] text-[13px] font-medium bg-[#3B66EB] hover:bg-[#3258D6] active:bg-[#284BBB] text-white inline-flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-xs"
+      >
+        <FolderOpen className="w-4 h-4" />
+        <span>Browse Files</span>
+        <span className="sr-only">Upload video file for forensic deepfake analysis</span>
+      </button>
+
+      {/* 5. Supported file information (contrast >= 4.5:1 against #111927) */}
+      <div className="mt-4 text-[11px] font-mono text-[#91A0B8] tracking-tight">
+        MP4, MOV, WEBM, AVI, MKV · Max {MAX_SIZE_MB} MB · Up to 60s
       </div>
 
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        disabled={disabled || isUploading}
-        loading={isUploading}
-      >
-        BROWSE LOCAL DRIVE
-      </Button>
-
+      {/* Validation feedback if invalid file was selected */}
       {error && (
         <div
           role="alert"
-          className="mt-4 font-mono text-xs text-alert-500 border border-alert-500/30 bg-alert-500/10 px-3 py-1.5 rounded"
+          aria-live="polite"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-3.5 inline-flex items-center gap-2 text-xs font-sans text-red-300 bg-red-950/50 border border-red-500/30 px-3.5 py-1.5 rounded-[8px]"
         >
-          ERR // {error}
+          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
     </div>
