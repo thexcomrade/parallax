@@ -1,7 +1,6 @@
 # PARALLAX — Audio-Visual Deepfake Forensics
 
 > Working title. Multimodal deepfake detection web app: **Face Transformer + Audio Transformer + Dynamic Weight Fusion (AVT²-DWF)**, served through a FastAPI backend and a React bento-grid frontend with a full login system.
-> This README is also the **master build prompt** for Antigravity: paste the rules in §2 once, then run the phases in §11 one by one.
 
 ---
 
