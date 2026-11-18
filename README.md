@@ -13,8 +13,7 @@
 # PARALLAX — Audio-Visual Deepfake Using AVT²-DWF
 
 > Working title. Multimodal deepfake detection web app: **Face Transformer + Audio Transformer + Dynamic Weight Fusion (AVT²-DWF)**, served through a FastAPI backend and a React bento-grid frontend with a full login system.
->>>>>>> 4e0fca5f1bdaec59fccae1dd964b6fca537449b8
-
+>>>>>>
 ---
 
 ## Table of Contents
