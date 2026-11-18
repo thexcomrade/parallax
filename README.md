@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PARALLAX — Multimodal Audio-Visual Deepfake Detection System
 
 [![Python Version](https://img.shields.io/badge/Python-3.12%20%7C%203.13-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
