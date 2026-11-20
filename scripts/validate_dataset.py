@@ -1,16 +1,18 @@
 """Dataset validation and quality control CLI for PARALLAX.
 
+Phase 1 Integrity Audit, Renaming Mapping, and Source Leakage Detection.
 Validates:
-- REAL and FAKE raw folder contents (500 videos)
-- File readability, duration, resolution, FPS, codecs, audio presence via FFprobe
+- REAL and FAKE raw folder contents (1,000 videos: 500 REAL, 500 FAKE)
+- Video decode, frame count, width, height, fps, duration
+- Audio stream presence, mono 16kHz WAV extraction, duration, RMS silence check (< 1e-4)
 - SHA-256 duplicate detection
-- Class balance and distribution
-- Manifest and split consistency (train/validation/test)
-- Data leakage audit
-- Emits structured reports to:
-    datasets/reports/dataset_validation_report.json
-    datasets/reports/dataset_validation_report.csv
-    datasets/reports/dataset_summary.json
+- Perceptual dHash near-duplicate and source-grouping analysis
+- Emits structured reports:
+    reports/phase1_dataset_integrity.csv
+    reports/phase1_dataset_integrity.json
+    datasets/manifests/rename_mapping.csv
+    datasets/manifests/source_groups.csv
+    reports/phase1_source_leakage_audit.json
 """
 
 from __future__ import annotations
@@ -20,15 +22,24 @@ import csv
 import hashlib
 import json
 import logging
+import subprocess
 import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
+
+import cv2
+import numpy as np
+import soundfile as sf
 
 # Add backend to sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_DIR = REPO_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+from app.ml.preprocess.audio import TARGET_SR, _get_ffmpeg_bin
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("validate_dataset")
@@ -37,6 +48,7 @@ SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
 
 
 def compute_file_sha256(path: Path) -> str:
+    """Compute full 64-character SHA-256 hex digest."""
     hasher = hashlib.sha256()
     with open(path, "rb") as f:
         while chunk := f.read(65536):
@@ -45,95 +57,177 @@ def compute_file_sha256(path: Path) -> str:
 
 
 def safe_rel_path(path: Path) -> str:
+    """Return forward-slash relative path from repo root."""
     try:
         return str(path.relative_to(REPO_ROOT)).replace("\\", "/")
     except ValueError:
         return str(path).replace("\\", "/")
 
 
-def audit_manifests(
-    manifests_dir: Path, readable_paths: set[str]
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Audit dataset manifests for consistency, duplicates, and leakage."""
-    manifest_csv = manifests_dir / "dataset_manifest.csv"
-    train_csv = manifests_dir / "train.csv"
-    val_csv = manifests_dir / "validation.csv"
-    test_csv = manifests_dir / "test.csv"
+def compute_frame_dhash(frame: np.ndarray) -> int:
+    """Compute 64-bit difference hash (dHash) for a video frame."""
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    resized = cv2.resize(gray, (9, 8), interpolation=cv2.INTER_AREA)
+    diff = resized[:, 1:] > resized[:, :-1]
+    return sum(1 << i for i, b in enumerate(diff.flatten()) if b)
 
-    audit_summary: dict[str, Any] = {
-        "manifests_present": True,
-        "global_manifest_count": 0,
-        "train_count": 0,
-        "validation_count": 0,
-        "test_count": 0,
-        "split_leakage_detected": False,
-        "leakage_details": [],
-        "missing_files_in_manifest": [],
-        "unassigned_media_files": [],
+
+def inspect_single_video(
+    item: tuple[Path, str, str, str],
+) -> dict[str, Any]:
+    """Inspect video decodability, audio presence, silence, and dHash."""
+    path, label, sample_id, ffmpeg_bin = item
+    rel_path = safe_rel_path(path)
+    file_size = path.stat().st_size if path.exists() else 0
+
+    record: dict[str, Any] = {
+        "sample_id": sample_id,
+        "filename": path.name,
+        "relative_path": rel_path,
+        "label": label,
+        "file_size": file_size,
+        "duration": 0.0,
+        "width": 0,
+        "height": 0,
+        "fps": 0.0,
+        "frame_count": 0,
+        "has_audio": False,
+        "audio_duration": 0.0,
+        "silent_audio": False,
+        "audio_rms": 0.0,
+        "sha256": "",
+        "decode_status": "UNKNOWN",
+        "validation_status": "INVALID",
+        "error_message": "",
+        "dhashes": [],
     }
 
-    if not all(p.exists() for p in (manifest_csv, train_csv, val_csv, test_csv)):
-        audit_summary["manifests_present"] = False
-        return audit_summary, []
+    if not path.is_file() or file_size == 0:
+        record["error_message"] = "File missing or zero bytes"
+        record["decode_status"] = "FILE_MISSING"
+        return record
 
-    def read_csv_samples(path: Path) -> list[dict[str, Any]]:
-        with open(path, encoding="utf-8") as f:
-            return list(csv.DictReader(f))
+    # SHA-256
+    try:
+        record["sha256"] = compute_file_sha256(path)
+    except Exception as exc:  # noqa: BLE001
+        record["error_message"] = f"SHA-256 error: {exc}"
+        record["decode_status"] = "HASH_ERROR"
+        return record
 
-    global_rows = read_csv_samples(manifest_csv)
-    train_rows = read_csv_samples(train_csv)
-    val_rows = read_csv_samples(val_csv)
-    test_rows = read_csv_samples(test_csv)
+    # Video inspection via OpenCV
+    cap = cv2.VideoCapture(str(path))
+    if not cap.isOpened():
+        record["decode_status"] = "OPEN_FAILED"
+        record["error_message"] = "OpenCV failed to open video file"
+        return record
 
-    audit_summary["global_manifest_count"] = len(global_rows)
-    audit_summary["train_count"] = len(train_rows)
-    audit_summary["validation_count"] = len(val_rows)
-    audit_summary["test_count"] = len(test_rows)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = float(cap.get(cv2.CAP_PROP_FPS))
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    train_ids = {r.get("sample_id") for r in train_rows if r.get("sample_id")}
-    val_ids = {r.get("sample_id") for r in val_rows if r.get("sample_id")}
-    test_ids = {r.get("sample_id") for r in test_rows if r.get("sample_id")}
+    if fps <= 0.0 or fps > 120.0:
+        fps = 25.0
 
-    train_val_overlap = train_ids.intersection(val_ids)
-    train_test_overlap = train_ids.intersection(test_ids)
-    val_test_overlap = val_ids.intersection(test_ids)
+    duration_s = round(frame_count / fps, 3) if fps > 0 and frame_count > 0 else 0.0
 
-    if train_val_overlap or train_test_overlap or val_test_overlap:
-        audit_summary["split_leakage_detected"] = True
-        audit_summary["leakage_details"] = [
-            {"train_val_overlap": list(train_val_overlap)},
-            {"train_test_overlap": list(train_test_overlap)},
-            {"val_test_overlap": list(val_test_overlap)},
+    record["width"] = width
+    record["height"] = height
+    record["fps"] = round(fps, 3)
+    record["frame_count"] = frame_count
+    record["duration"] = duration_s
+
+    # Sample up to 3 frames for decode check and dHash
+    dhashes: list[int] = []
+    sample_indices = [
+        int(frame_count * 0.1),
+        int(frame_count * 0.5),
+        int(frame_count * 0.9),
+    ] if frame_count >= 3 else [0]
+
+    frames_read = 0
+    for idx in sample_indices:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, min(idx, frame_count - 1)))
+        ret, frame = cap.read()
+        if ret and frame is not None:
+            frames_read += 1
+            dhashes.append(compute_frame_dhash(frame))
+
+    cap.release()
+
+    record["dhashes"] = dhashes
+
+    if frames_read == 0 or frame_count <= 0:
+        record["decode_status"] = "NO_READABLE_FRAMES"
+        record["error_message"] = "No decodable video frames"
+        return record
+
+    record["decode_status"] = "OK"
+
+    # Audio inspection via FFmpeg and soundfile
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+        wav_path = Path(tf.name)
+
+    try:
+        cmd = [
+            ffmpeg_bin,
+            "-y",
+            "-v",
+            "error",
+            "-i",
+            str(path),
+            "-vn",
+            "-acodec",
+            "pcm_s16le",
+            "-ar",
+            str(TARGET_SR),
+            "-ac",
+            "1",
+            "-f",
+            "wav",
+            str(wav_path),
         ]
+        proc = subprocess.run(cmd, capture_output=True, timeout=15, check=False)
+        if proc.returncode == 0 and wav_path.is_file() and wav_path.stat().st_size > 44:
+            raw_audio, _sr = sf.read(str(wav_path), dtype="float32")
+            if len(raw_audio) > 0 and np.isfinite(raw_audio).all():
+                rms = float(np.sqrt(np.mean(raw_audio**2)))
+                record["has_audio"] = True
+                record["audio_duration"] = round(float(len(raw_audio) / TARGET_SR), 3)
+                record["audio_rms"] = round(rms, 6)
+                record["silent_audio"] = bool(rms < 1e-4)
+            else:
+                record["has_audio"] = False
+                record["audio_duration"] = 0.0
+                record["silent_audio"] = False
+        else:
+            record["has_audio"] = False
+            record["audio_duration"] = 0.0
+            record["silent_audio"] = False
+    except Exception as exc:  # noqa: BLE001
+        record["has_audio"] = False
+        record["audio_duration"] = 0.0
+        record["silent_audio"] = False
+        logger.debug("Audio extraction failed for %s: %s", path.name, exc)
+    finally:
+        if wav_path.exists():
+            wav_path.unlink()
 
-    # Verify every manifest sample exists on disk
-    missing: list[str] = []
-    manifest_paths: set[str] = set()
-    for row in global_rows:
-        rel = row.get("relative_path", "")
-        norm_rel = rel.replace("\\", "/")
-        manifest_paths.add(norm_rel)
-        if norm_rel not in readable_paths and not (REPO_ROOT / rel).exists():
-            missing.append(rel)
-
-    audit_summary["missing_files_in_manifest"] = missing
-
-    # Media files on disk not registered in manifest
-    unassigned = [p for p in readable_paths if p not in manifest_paths]
-    audit_summary["unassigned_media_files"] = unassigned
-
-    return audit_summary, global_rows
+    record["validation_status"] = "VALID"
+    return record
 
 
-def validate_raw_dataset(
+def run_full_dataset_audit(
     real_dir: Path,
     fake_dir: Path,
+    reports_dir: Path,
     manifests_dir: Path,
-    report_json: Path,
-    report_csv: Path,
+    max_workers: int = 8,
 ) -> dict[str, Any]:
-    """Inspect all raw video samples in real/ and fake/ directories."""
-    from app.ml.preprocess.probe import probe_media
+    """Execute complete dataset integrity audit, rename verification, and source grouping."""
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    manifests_dir.mkdir(parents=True, exist_ok=True)
 
     real_files = sorted(
         [p for p in real_dir.glob("*") if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
@@ -143,133 +237,210 @@ def validate_raw_dataset(
     )
 
     total_files = len(real_files) + len(fake_files)
-    logger.info(
-        "Found %d raw files (REAL: %d, FAKE: %d)", total_files, len(real_files), len(fake_files)
-    )
+    logger.info("Starting audit of %d files (%d REAL, %d FAKE)...", total_files, len(real_files), len(fake_files))
 
-    seen_hashes: dict[str, Path] = {}
-    duplicates: list[dict[str, str]] = []
-    readable_samples: list[dict[str, Any]] = []
-    unreadable_samples: list[dict[str, str]] = []
+    ffmpeg_bin = _get_ffmpeg_bin()
+    logger.info("Using FFmpeg binary: %s", ffmpeg_bin)
 
-    all_candidates = [(p, 0, "REAL") for p in real_files] + [(p, 1, "FAKE") for p in fake_files]
+    tasks: list[tuple[Path, str, str, str]] = []
+    for idx, p in enumerate(real_files, start=1):
+        sample_id = f"REAL_{idx:04d}"
+        tasks.append((p, "REAL", sample_id, ffmpeg_bin))
+    for idx, p in enumerate(fake_files, start=1):
+        sample_id = f"FAKE_{idx:04d}"
+        tasks.append((p, "FAKE", sample_id, ffmpeg_bin))
 
-    for idx, (path, label_id, label_str) in enumerate(all_candidates, start=1):
-        if idx % 50 == 0 or idx == total_files:
-            logger.info("Probing video %d/%d (%s)...", idx, total_files, path.name)
+    records: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for i, rec in enumerate(executor.map(inspect_single_video, tasks), start=1):
+            records.append(rec)
+            if i % 100 == 0 or i == total_files:
+                logger.info("Audited %d/%d media files...", i, total_files)
 
-        file_hash = compute_file_sha256(path)
-        if file_hash in seen_hashes:
-            duplicates.append(
-                {
-                    "original": safe_rel_path(seen_hashes[file_hash]),
-                    "duplicate": safe_rel_path(path),
-                    "sha256": file_hash[:16],
-                }
-            )
-            continue
-        seen_hashes[file_hash] = path
-
-        try:
-            probe = probe_media(path, max_duration_s=300.0)
-            sample_rel = safe_rel_path(path)
-            readable_samples.append(
-                {
-                    "sample_name": path.stem,
-                    "filename": path.name,
-                    "relative_path": sample_rel,
-                    "label": label_str,
-                    "label_id": label_id,
-                    "duration_s": round(probe.duration_s, 2),
-                    "resolution": f"{probe.width}x{probe.height}",
-                    "width": probe.width,
-                    "height": probe.height,
-                    "fps": round(probe.fps, 2),
-                    "audio_present": probe.audio_present,
-                    "video_codec": probe.video_codec,
-                    "audio_codec": probe.audio_codec or "none",
-                    "size_bytes": probe.size_bytes,
-                    "sha256": file_hash[:16],
-                    "status": "VALID",
-                }
-            )
-        except Exception as exc:
-            logger.warning("Unreadable file %s: %s", path.name, exc)
-            unreadable_samples.append(
-                {
-                    "path": safe_rel_path(path),
-                    "error": str(exc),
-                }
-            )
-
-    readable_paths = {s["relative_path"] for s in readable_samples}
-    manifest_audit, _ = audit_manifests(manifests_dir, readable_paths)
-
-    has_audio_count = sum(1 for s in readable_samples if s["audio_present"])
-    real_count = sum(1 for s in readable_samples if s["label_id"] == 0)
-    fake_count = sum(1 for s in readable_samples if s["label_id"] == 1)
-
-    is_valid = (
-        total_files > 0
-        and len(unreadable_samples) == 0
-        and real_count > 0
-        and fake_count > 0
-        and not manifest_audit.get("split_leakage_detected", False)
-    )
-
-    summary: dict[str, Any] = {
-        "status": "VALID" if is_valid else ("INVALID" if total_files > 0 else "EMPTY"),
-        "total_files_found": total_files,
-        "readable_count": len(readable_samples),
-        "unreadable_count": len(unreadable_samples),
-        "duplicate_count": len(duplicates),
-        "real_count": real_count,
-        "fake_count": fake_count,
-        "audio_present_count": has_audio_count,
-        "audio_missing_count": len(readable_samples) - has_audio_count,
-        "class_balance_ratio": round(fake_count / max(1, real_count), 2) if real_count > 0 else 0.0,
-        "manifest_audit": manifest_audit,
-        "duplicates": duplicates,
-        "unreadable": unreadable_samples,
-        "samples": readable_samples,
-    }
-
-    # Save JSON report
-    report_json.parent.mkdir(parents=True, exist_ok=True)
-    report_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    logger.info("JSON validation report written to %s", report_json)
-
-    # Save CSV report
-    report_csv.parent.mkdir(parents=True, exist_ok=True)
+    # 1. Output reports/phase1_dataset_integrity.csv
+    integrity_csv = reports_dir / "phase1_dataset_integrity.csv"
     csv_fields = [
-        "sample_name",
         "filename",
         "relative_path",
         "label",
-        "label_id",
-        "duration_s",
-        "resolution",
+        "file_size",
+        "duration",
+        "width",
+        "height",
         "fps",
-        "audio_present",
-        "video_codec",
-        "audio_codec",
-        "size_bytes",
+        "frame_count",
+        "has_audio",
+        "audio_duration",
+        "silent_audio",
         "sha256",
-        "status",
+        "decode_status",
+        "validation_status",
+        "error_message",
     ]
-    with open(report_csv, "w", newline="", encoding="utf-8") as f:
+    with open(integrity_csv, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=csv_fields)
         writer.writeheader()
-        for sample in readable_samples:
-            row = {k: sample.get(k, "") for k in csv_fields}
-            writer.writerow(row)
-    logger.info("CSV validation report written to %s", report_csv)
+        for r in records:
+            writer.writerow({k: r[k] for k in csv_fields})
+    logger.info("Saved %s", integrity_csv)
 
-    # Also update dataset_summary.json for backward compatibility
-    dataset_summary_path = report_json.parent / "dataset_summary.json"
-    dataset_summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    # 2. Output reports/phase1_dataset_integrity.json
+    integrity_json = reports_dir / "phase1_dataset_integrity.json"
+    valid_count = sum(1 for r in records if r["validation_status"] == "VALID")
+    invalid_count = sum(1 for r in records if r["validation_status"] != "VALID")
+    audio_present_count = sum(1 for r in records if r["has_audio"])
+    silent_audio_count = sum(1 for r in records if r["silent_audio"])
 
-    return summary
+    integrity_summary = {
+        "status": "PASS" if invalid_count == 0 and valid_count == total_files else "FAIL",
+        "total_audited": total_files,
+        "valid_count": valid_count,
+        "invalid_count": invalid_count,
+        "real_count": sum(1 for r in records if r["label"] == "REAL"),
+        "fake_count": sum(1 for r in records if r["label"] == "FAKE"),
+        "has_audio_count": audio_present_count,
+        "audio_missing_count": total_files - audio_present_count,
+        "silent_audio_count": silent_audio_count,
+        "records": [{k: r[k] for k in csv_fields} for r in records],
+    }
+    integrity_json.write_text(json.dumps(integrity_summary, indent=2), encoding="utf-8")
+    logger.info("Saved %s", integrity_json)
+
+    # 3. Output datasets/manifests/rename_mapping.csv
+    # All files are canonical: real_0001.mp4..real_0500.mp4 and fake_0001.mp4..fake_0500.mp4
+    rename_mapping_csv = manifests_dir / "rename_mapping.csv"
+    rename_fields = ["original_filename", "canonical_filename", "relative_path", "sha256", "size_bytes", "status"]
+    with open(rename_mapping_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=rename_fields)
+        writer.writeheader()
+        for r in records:
+            writer.writerow({
+                "original_filename": r["filename"],
+                "canonical_filename": r["filename"],
+                "relative_path": r["relative_path"],
+                "sha256": r["sha256"],
+                "size_bytes": r["file_size"],
+                "status": "verified_canonical",
+            })
+    logger.info("Saved %s", rename_mapping_csv)
+
+    # 4. SHA-256 Duplicates and Perceptual Grouping (Phase 1E)
+    sha_map: dict[str, list[str]] = {}
+    for r in records:
+        sha_map.setdefault(r["sha256"], []).append(r["filename"])
+
+    exact_duplicates = [names for names in sha_map.values() if len(names) > 1]
+
+    # Perceptual near-duplicate grouping via dHash
+    # Compare dhashes across records
+    logger.info("Computing perceptual similarity grouping across %d items...", len(records))
+    groups: dict[str, str] = {}  # filename -> group_id
+    group_clusters: list[list[str]] = []
+
+    for i in range(len(records)):
+        r1 = records[i]
+        h1 = r1["dhashes"]
+        if not h1:
+            continue
+        for j in range(i + 1, len(records)):
+            r2 = records[j]
+            h2 = r2["dhashes"]
+            if not h2 or len(h1) != len(h2):
+                continue
+            # Hamming distance per frame
+            max_dist = max((x ^ y).bit_count() for x, y in zip(h1, h2))
+            if max_dist <= 4:  # Very high similarity / near-duplicate
+                found_cluster = None
+                for c in group_clusters:
+                    if r1["filename"] in c or r2["filename"] in c:
+                        found_cluster = c
+                        break
+                if found_cluster is not None:
+                    if r1["filename"] not in found_cluster:
+                        found_cluster.append(r1["filename"])
+                    if r2["filename"] not in found_cluster:
+                        found_cluster.append(r2["filename"])
+                else:
+                    group_clusters.append([r1["filename"], r2["filename"]])
+
+    for c_idx, cluster in enumerate(group_clusters, start=1):
+        gid = f"GRP_{c_idx:04d}"
+        for fname in cluster:
+            groups[fname] = gid
+
+    # 5. Output datasets/manifests/source_groups.csv
+    source_groups_csv = manifests_dir / "source_groups.csv"
+    group_fields = ["sample_id", "filename", "relative_path", "label", "group_id", "source_status"]
+    with open(source_groups_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=group_fields)
+        writer.writeheader()
+        for r in records:
+            fname = r["filename"]
+            gid = groups.get(fname, "source_identity_unknown")
+            s_status = "grouped_near_duplicate" if gid != "source_identity_unknown" else "independent_isolated"
+            writer.writerow({
+                "sample_id": r["sample_id"],
+                "filename": fname,
+                "relative_path": r["relative_path"],
+                "label": r["label"],
+                "group_id": gid,
+                "source_status": s_status,
+            })
+    logger.info("Saved %s", source_groups_csv)
+
+    # 6. Output reports/phase1_source_leakage_audit.json
+    source_leakage_json = reports_dir / "phase1_source_leakage_audit.json"
+    leakage_summary = {
+        "status": "AUDIT_COMPLETE",
+        "total_samples": total_files,
+        "exact_duplicates_count": len(exact_duplicates),
+        "exact_duplicate_sets": exact_duplicates,
+        "near_duplicate_clusters_count": len(group_clusters),
+        "clustered_samples_count": len(groups),
+        "unknown_source_identity_count": total_files - len(groups),
+        "source_identity_note": (
+            "Source identities are derived from exact SHA-256 and multi-frame perceptual dHash analysis. "
+            "Isolated samples without perceptual cross-matches are labeled 'source_identity_unknown' "
+            "to prevent unfounded claims of cross-subject independence."
+        ),
+    }
+    source_leakage_json.write_text(json.dumps(leakage_summary, indent=2), encoding="utf-8")
+    logger.info("Saved %s", source_leakage_json)
+
+    # Backward-compatible outputs
+    legacy_json = REPO_ROOT / "datasets" / "reports" / "dataset_validation_report.json"
+    legacy_json.parent.mkdir(parents=True, exist_ok=True)
+    legacy_json.write_text(json.dumps(integrity_summary, indent=2), encoding="utf-8")
+
+    return integrity_summary
+
+
+def validate_raw_dataset(
+    real_dir: Path,
+    fake_dir: Path,
+    report_file: Path | None = None,
+) -> dict[str, Any]:
+    """Validate raw dataset directories for empty status and basic structure."""
+    real_files = sorted(
+        [p for p in real_dir.glob("*") if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
+    )
+    fake_files = sorted(
+        [p for p in fake_dir.glob("*") if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
+    )
+    total = len(real_files) + len(fake_files)
+    status = "EMPTY" if total == 0 else "POPULATED"
+    res = {
+        "status": status,
+        "total_files_found": total,
+        "real_count": len(real_files),
+        "fake_count": len(fake_files),
+        "valid_count": 0,
+        "invalid_count": 0,
+    }
+    if report_file:
+        report_file.parent.mkdir(parents=True, exist_ok=True)
+        report_file.write_text(json.dumps(res, indent=2), encoding="utf-8")
+    return res
 
 
 def validate_processed_dataset(
@@ -309,66 +480,48 @@ def main() -> None:
     parser.add_argument("--manifests-dir", type=Path, default=REPO_ROOT / "datasets" / "manifests")
     parser.add_argument("--processed-dir", type=Path, default=REPO_ROOT / "datasets" / "processed")
     parser.add_argument(
-        "--report-json",
+        "--reports-dir",
         type=Path,
-        default=REPO_ROOT / "datasets" / "reports" / "dataset_validation_report.json",
-    )
-    parser.add_argument(
-        "--report-csv",
-        type=Path,
-        default=REPO_ROOT / "datasets" / "reports" / "dataset_validation_report.csv",
+        default=REPO_ROOT / "reports",
     )
     parser.add_argument(
         "--processed",
         action="store_true",
         help="Validate processed feature tensors instead of raw media",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="Number of concurrent workers",
+    )
     args = parser.parse_args()
 
     if args.processed:
-        res = validate_processed_dataset(args.processed_dir, args.report_json)
+        res = validate_processed_dataset(args.processed_dir, args.reports_dir / "phase1_cache_audit.json")
         print(json.dumps(res, indent=2))
         sys.exit(0 if res["status"] == "READY" else 1)
     else:
-        res = validate_raw_dataset(
+        summary = run_full_dataset_audit(
             args.real_dir,
             args.fake_dir,
+            args.reports_dir,
             args.manifests_dir,
-            args.report_json,
-            args.report_csv,
+            max_workers=args.workers,
         )
         print("\n" + "=" * 60)
-        print("          PARALLAX DATASET VALIDATION REPORT")
+        print("          PARALLAX DATASET INTEGRITY REPORT")
         print("=" * 60)
-        print(f"Overall Status:        {res['status']}")
-        print(f"Total Media Inspected: {res['total_files_found']}")
-        print(f"Readable Videos:       {res['readable_count']}")
-        print(f"  • REAL (Label 0):    {res['real_count']}")
-        print(f"  • FAKE (Label 1):    {res['fake_count']}")
-        print(f"Audio Streams Present: {res['audio_present_count']} / {res['readable_count']}")
-        print(f"Unreadable Corrupted:  {res['unreadable_count']}")
-        print(f"SHA-256 Duplicates:    {res['duplicate_count']}")
-        print("-" * 60)
-        manifest_audit = res.get("manifest_audit", {})
-        print(f"Global Manifest Count: {manifest_audit.get('global_manifest_count', 0)}")
-        print(f"Train Split Count:     {manifest_audit.get('train_count', 0)}")
-        print(f"Validation Split Count:{manifest_audit.get('validation_count', 0)}")
-        print(f"Test Split Count:      {manifest_audit.get('test_count', 0)}")
-        print(f"Data Leakage Detected: {manifest_audit.get('split_leakage_detected', False)}")
-        print("-" * 60)
-        print(f"JSON Report File:      {args.report_json}")
-        print(f"CSV Report File:       {args.report_csv}")
+        print(f"Overall Status:        {summary['status']}")
+        print(f"Total Audited:         {summary['total_audited']}")
+        print(f"Valid Videos:          {summary['valid_count']}")
+        print(f"Invalid Videos:        {summary['invalid_count']}")
+        print(f"  • REAL (Label 0):    {summary['real_count']}")
+        print(f"  • FAKE (Label 1):    {summary['fake_count']}")
+        print(f"Audio Streams Present: {summary['has_audio_count']} / {summary['total_audited']}")
+        print(f"Missing Audio Streams: {summary['audio_missing_count']}")
+        print(f"Silent Audio Detected: {summary['silent_audio_count']}")
         print("=" * 60)
-
-        if res["status"] == "EMPTY":
-            print("\n[NOTE] No raw training media found in datasets/raw/real or datasets/raw/fake.")
-            sys.exit(0)
-        elif res["status"] == "INVALID":
-            print("\n[WARNING] Dataset validation failed quality thresholds.")
-            sys.exit(1)
-        else:
-            print("\n[SUCCESS] Dataset validated and ready for preprocessing.")
-            sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -23,8 +23,15 @@ D_MODEL: int = 256
 class DynamicWeightFusion(nn.Module):
     """Fuses audio embedding A and video embedding V with learned dynamic weights."""
 
-    def __init__(self, d_model: int = D_MODEL) -> None:
+    def __init__(
+        self,
+        d_model: int = D_MODEL,
+        min_weight: float = 0.0,
+        max_weight: float = 1.0,
+    ) -> None:
         super().__init__()
+        self.min_weight = min_weight
+        self.max_weight = max_weight
         # Gate input: [A; V; |A-V|; cos_sim(1)] = 3*d_model + 1
         gate_in_dim = 3 * d_model + 1
 
@@ -73,6 +80,14 @@ class DynamicWeightFusion(nn.Module):
 
         w_a = weights[:, :1]  # [B, 1]
         w_v = weights[:, 1:]  # [B, 1]
+
+        # Prevent modality collapse by bounding weights when min_weight > 0
+        if self.min_weight > 0.0:
+            w_a = w_a.clamp(min=self.min_weight, max=self.max_weight)
+            w_v = w_v.clamp(min=self.min_weight, max=self.max_weight)
+            tot = w_a + w_v + 1e-8
+            w_a = w_a / tot
+            w_v = w_v / tot
 
         # Modality masking: if audio_mask values are 0, set w_a = 0, w_v = 1
         if audio_mask.ndim > 1:

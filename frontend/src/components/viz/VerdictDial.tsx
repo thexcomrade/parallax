@@ -24,12 +24,16 @@ export const VerdictDial: React.FC<VerdictDialProps> = ({
 }) => {
   const [displayScore, setDisplayScore] = useState(0);
 
-  // Confidence is p_fake if FAKE, (1 - p_fake) if AUTHENTIC, or distance from boundary if INCONCLUSIVE
+  const isFake = verdict === 'FAKE';
+  const isAuthentic = verdict === 'AUTHENTIC' || (verdict as string) === 'REAL';
+  const isInconclusive = verdict === 'INCONCLUSIVE';
+
+  // Confidence is p_fake if FAKE, (1 - p_fake) if AUTHENTIC or REAL, or distance from boundary if INCONCLUSIVE
   const targetConfidence =
     p_fake !== null
-      ? verdict === 'AUTHENTIC'
+      ? isAuthentic
         ? Math.round((1 - p_fake) * 100)
-        : verdict === 'FAKE'
+        : isFake
         ? Math.round(p_fake * 100)
         : Math.round((1 - Math.abs(p_fake - 0.5) * 2) * 100)
       : 0;
@@ -63,10 +67,6 @@ export const VerdictDial: React.FC<VerdictDialProps> = ({
     frameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frameId);
   }, [targetConfidence]);
-
-  const isFake = verdict === 'FAKE';
-  const isAuthentic = verdict === 'AUTHENTIC';
-  const isInconclusive = verdict === 'INCONCLUSIVE';
 
   return (
     <div

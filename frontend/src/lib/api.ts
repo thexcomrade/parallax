@@ -7,7 +7,9 @@
 import { authStore } from '@/lib/auth-store';
 import type { TokenResponse } from '@/types/api';
 
-const BASE = '/api/v1';
+const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+export const API_BASE = rawApiUrl ? `${rawApiUrl.replace(/\/+$/, '')}/api/v1` : '/api/v1';
+const BASE = API_BASE;
 
 export class ApiError extends Error {
   constructor(

@@ -36,6 +36,7 @@ def test_user_upload(db_session: Session) -> User:
         db=db_session,
         email="upload_tester@parallax.io",
         password="SecurePassword2026!Long",
+        role="operator",
     )
 
 

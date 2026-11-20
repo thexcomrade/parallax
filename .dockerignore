@@ -1,0 +1,15 @@
+.git
+.venv
+backend/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+datasets/
+checkpoints/
+experiments/
+monitoring/
+node_modules/
+frontend/node_modules/
+storage/
+*.log

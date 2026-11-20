@@ -104,9 +104,6 @@ export const RegisterPage: React.FC = () => {
               PARALLAX
             </span>
             <span className="text-[10px] text-[#475569]">/</span>
-            <span className="text-[11px] font-medium text-[#91A0B8]">
-              Forensics
-            </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#E8EDF5]">

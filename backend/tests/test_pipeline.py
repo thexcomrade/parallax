@@ -389,6 +389,10 @@ def test_model_card_json_structure(tmp_path: Path) -> None:
     from pathlib import Path
 
     mc_path = Path("app/ml/weights/model_card.json")
+    if not mc_path.exists():
+        mc_path = (
+            Path(__file__).resolve().parent.parent / "app" / "ml" / "weights" / "model_card.json"
+        )
     assert mc_path.exists(), "model_card.json missing"
     mc = json.loads(mc_path.read_text())
     required_fields = [

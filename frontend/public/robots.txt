@@ -1,0 +1,9 @@
+# PARALLAX Robots Configuration
+User-agent: *
+Disallow: /app/
+Disallow: /api/
+Allow: /
+Allow: /login
+Allow: /register
+
+Sitemap: /sitemap.xml

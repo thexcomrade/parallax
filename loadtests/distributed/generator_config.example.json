@@ -1,0 +1,37 @@
+{
+  "cluster_name": "parallax-staging-load-cluster",
+  "coordinator": {
+    "host": "coordinator.internal",
+    "port": 6565
+  },
+  "nodes": [
+    {
+      "node_id": "generator-node-01",
+      "host": "192.168.1.101",
+      "cores": 16,
+      "ram_gb": 32,
+      "assigned_vus": 10000,
+      "status": "ready"
+    },
+    {
+      "node_id": "generator-node-02",
+      "host": "192.168.1.102",
+      "cores": 16,
+      "ram_gb": 32,
+      "assigned_vus": 10000,
+      "status": "ready"
+    },
+    {
+      "node_id": "generator-node-03",
+      "host": "192.168.1.103",
+      "cores": 16,
+      "ram_gb": 32,
+      "assigned_vus": 10000,
+      "status": "ready"
+    }
+  ],
+  "target": {
+    "base_url": "http://staging-api:8000",
+    "scenarios": ["mixed_workload.js"]
+  }
+}

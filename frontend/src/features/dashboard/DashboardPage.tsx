@@ -56,7 +56,9 @@ export const DashboardPage: React.FC = () => {
   );
 
   const fakes = evaluatedAnalyses.filter((a) => a.verdict === 'FAKE').length;
-  const authentic = evaluatedAnalyses.filter((a) => a.verdict === 'AUTHENTIC').length;
+  const authentic = evaluatedAnalyses.filter(
+    (a) => a.verdict === 'AUTHENTIC' || (a.verdict as string) === 'REAL',
+  ).length;
 
   const isUntrained = modelQuery.data?.model_mode === 'untrained';
 
@@ -296,7 +298,7 @@ export const DashboardPage: React.FC = () => {
                             FAKE
                           </span>
                         )}
-                        {item.verdict === 'AUTHENTIC' && (
+                        {(item.verdict === 'AUTHENTIC' || (item.verdict as string) === 'REAL') && (
                           <span className="h-[25px] inline-flex items-center gap-1.5 px-2.5 rounded-[7px] text-[11px] font-semibold bg-[#35C99A]/15 text-[#35C99A] border border-[#35C99A]/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#35C99A]" />
                             REAL

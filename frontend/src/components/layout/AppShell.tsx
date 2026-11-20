@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { StatusStrip } from './StatusStrip';
@@ -10,6 +10,23 @@ export const AppShell: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    let robotsMeta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    if (!robotsMeta) {
+      robotsMeta = document.createElement('meta');
+      robotsMeta.name = 'robots';
+      document.head.appendChild(robotsMeta);
+    }
+    const prevRobots = robotsMeta.content;
+    robotsMeta.content = 'noindex, nofollow';
+
+    return () => {
+      if (robotsMeta) {
+        robotsMeta.content = prevRobots || 'index, follow';
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--surface-base)] text-[var(--text-100)] flex font-sans selection:bg-[var(--cobalt-500)]/30 selection:text-white">

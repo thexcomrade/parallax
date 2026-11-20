@@ -49,15 +49,24 @@ class AVT2DWF(nn.Module):
         d_model: int = D_MODEL,
         pretrained_vit: bool = True,
         audio_layernorm: bool = False,
+        audio_input_norm: bool = True,
         auxiliary_heads: bool = False,
         classifier_dropout: float = 0.1,
+        dwf_min_weight: float = 0.0,
+        dwf_max_weight: float = 1.0,
     ) -> None:
         super().__init__()
         self.d_model = d_model
         self.auxiliary_heads = auxiliary_heads
         self.face_encoder = FaceEncoder(d_model=d_model, pretrained=pretrained_vit)
-        self.audio_encoder = AudioEncoder(d_model=d_model, use_layernorm=audio_layernorm)
-        self.dwf = DynamicWeightFusion(d_model=d_model)
+        self.audio_encoder = AudioEncoder(
+            d_model=d_model,
+            use_layernorm=audio_layernorm,
+            use_input_norm=audio_input_norm,
+        )
+        self.dwf = DynamicWeightFusion(
+            d_model=d_model, min_weight=dwf_min_weight, max_weight=dwf_max_weight
+        )
 
         # Classifier head: fused embedding → 2-class logits
         self.classifier = nn.Sequential(

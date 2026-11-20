@@ -6,8 +6,9 @@ Matches contract in README §8.3, §9 and database schema in models.py.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class AnalysisCreated(BaseModel):
@@ -45,6 +46,34 @@ class TimelineItem(BaseModel):
     p_fused: float
 
 
+class AnalysisPublicDetail(BaseModel):
+    """Public analysis response without internal metrics or telemetry.
+
+    Exposes strictly binary verdict ('REAL' or 'FAKE') and essential metadata.
+    Internal probabilities, DWF weights, modality scores, timelines, and
+    forensic artifacts are strictly withheld.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    original_name: str
+    status: str
+    stage: str
+    verdict: str | None = None
+    duration_s: float
+    audio_present: bool = True
+    created_at: datetime
+    completed_at: datetime | None = None
+    error: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def prediction(self) -> str | None:
+        """Binary detection result ('REAL' or 'FAKE') matching public contract."""
+        return self.verdict
+
+
 class AnalysisDetail(AnalysisSummary):
     w_audio: float | None = None
     w_video: float | None = None
@@ -71,3 +100,19 @@ class StageEventPayload(BaseModel):
     progress: float
     message: str
     elapsed_s: float
+
+
+class UploadPolicyResponse(BaseModel):
+    analysis_id: str
+    key: str
+    url: str
+    fields: dict[str, Any]
+    expires_in: int
+
+
+class FinalizeUploadRequest(BaseModel):
+    analysis_id: str
+    key: str
+    original_name: str
+    sha256: str
+    size_bytes: int

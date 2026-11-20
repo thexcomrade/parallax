@@ -50,6 +50,8 @@ def compute_metrics(
             "real_recall": 0.0,
             "fake_precision": 0.0,
             "fake_recall": 0.0,
+            "sensitivity": 0.0,
+            "specificity": 0.0,
             "total_samples": 0,
         }
 
@@ -108,6 +110,8 @@ def compute_metrics(
         "real_recall": round(real_recall, 4),
         "fake_precision": round(fake_precision, 4),
         "fake_recall": round(fake_recall, 4),
+        "sensitivity": round(recall, 4),
+        "specificity": round(real_recall, 4),
         "total_samples": total,
     }
 
@@ -266,11 +270,14 @@ def run_comprehensive_evaluation(
             wv_all.extend(wv_batch)
             sync_all.extend(sync_batch)
 
-            for sid, cp, y, pf, wa, wv, sc in zip(
+            for sid, cp, y, pf, pf_v, pf_a, pf_s, wa, wv, sc in zip(
                 sample_ids,
                 clip_paths,
                 labels_list,
                 p_fake_batch,
+                p_fake_v,
+                p_fake_a,
+                p_fake_s,
                 wa_batch,
                 wv_batch,
                 sync_batch,
@@ -291,6 +298,22 @@ def run_comprehensive_evaluation(
                         "False Positive (FP)"
                         if pred_lbl == 1 and y == 0
                         else "False Negative (FN)"
+                    )
+
+                pred_v = 1 if pf_v >= 0.5 else 0
+                is_corr_v = bool(pred_v == y)
+                err_type_v = "None"
+                if not is_corr_v:
+                    err_type_v = (
+                        "False Positive (FP)" if pred_v == 1 and y == 0 else "False Negative (FN)"
+                    )
+
+                pred_a = 1 if pf_a >= 0.5 else 0
+                is_corr_a = bool(pred_a == y)
+                err_type_a = "None"
+                if not is_corr_a:
+                    err_type_a = (
+                        "False Positive (FP)" if pred_a == 1 and y == 0 else "False Negative (FN)"
                     )
 
                 try:
@@ -314,6 +337,15 @@ def run_comprehensive_evaluation(
                         "sync_score": round(float(sc), 6),
                         "is_correct": is_corr,
                         "error_type": err_type,
+                        "pred_video": int(pred_v),
+                        "p_fake_video": round(float(pf_v), 6),
+                        "is_correct_video": is_corr_v,
+                        "error_type_video": err_type_v,
+                        "pred_audio": int(pred_a),
+                        "p_fake_audio": round(float(pf_a), 6),
+                        "is_correct_audio": is_corr_a,
+                        "error_type_audio": err_type_a,
+                        "p_fake_static": round(float(pf_s), 6),
                     }
                 )
 
@@ -371,6 +403,19 @@ def run_comprehensive_evaluation(
             "false_negative_count": len(false_negatives),
             "false_positives": false_positives,
             "false_negatives": false_negatives,
+        },
+        "raw_scores": {
+            "y_true": y_true,
+            "y_scores_multimodal": y_scores_multimodal,
+            "y_scores_video": y_scores_video,
+            "y_scores_audio": y_scores_audio,
+            "y_scores_static": y_scores_static,
+            "wa_all": wa_all,
+            "wv_all": wv_all,
+            "wa_real": wa_real,
+            "wv_real": wv_real,
+            "wa_fake": wa_fake,
+            "wv_fake": wv_fake,
         },
     }
 

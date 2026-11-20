@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -46,17 +48,18 @@ def _compute_iou(box_a: tuple[int, int, int, int], box_b: tuple[int, int, int, i
     return float(inter_area) / float(union_area)
 
 
-def _get_cascade_classifier() -> cv2.CascadeClassifier:
+def _get_cascade_classifier() -> Any:
     """Load OpenCV Haar cascade for robust local frontal face detection."""
     weights_path = (
         Path(__file__).resolve().parent.parent / "weights" / "haarcascade_frontalface_default.xml"
     )
-    if weights_path.is_file():
-        classifier = cv2.CascadeClassifier(str(weights_path))
-        if not classifier.empty():
-            return classifier
-
-    return cv2.CascadeClassifier()
+    if hasattr(cv2, "CascadeClassifier"):
+        if weights_path.is_file():
+            classifier = cv2.CascadeClassifier(str(weights_path))
+            if not classifier.empty():
+                return classifier
+        return cv2.CascadeClassifier()
+    return None
 
 
 def _crop_face_with_margin(
@@ -175,12 +178,14 @@ def extract_video_frames(
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Detect candidate faces
-        detected_faces: Any = classifier.detectMultiScale(
-            gray,
-            scaleFactor=1.15,
-            minNeighbors=4,
-            minSize=(32, 32),
-        )
+        detected_faces: Any = ()
+        if classifier is not None and hasattr(classifier, "detectMultiScale"):
+            detected_faces = classifier.detectMultiScale(
+                gray,
+                scaleFactor=1.15,
+                minNeighbors=4,
+                minSize=(32, 32),
+            )
 
         chosen_box: tuple[int, int, int, int]
 

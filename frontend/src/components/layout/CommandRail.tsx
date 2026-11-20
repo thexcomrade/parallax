@@ -142,7 +142,7 @@ export const CommandRail: React.FC<CommandRailProps> = ({
                   PARALLAX
                 </span>
                 <span className="text-[12px] text-[#91A0B8] font-normal leading-tight mt-0.5 truncate">
-                  Audio-Visual Forensics
+                  Deepfake Detection System
                 </span>
               </div>
             )}

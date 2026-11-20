@@ -1,0 +1,21 @@
+{
+  "name": "staging",
+  "base_url": "http://staging-api:8000",
+  "api_prefix": "/api/v1",
+  "allowed_hosts": [
+    "staging-api",
+    "localhost",
+    "127.0.0.1",
+    "host.docker.internal"
+  ],
+  "default_user": {
+    "email_prefix": "staging_load_user_",
+    "password": "SecureStagingPass2026!"
+  },
+  "concurrency_limits": {
+    "worker_max_concurrency": 1,
+    "redis_max_connections": 50,
+    "postgres_pool_size": 20,
+    "postgres_max_overflow": 10
+  }
+}

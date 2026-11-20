@@ -1,0 +1,36 @@
+# PARALLAX — Prometheus Server Scrape Configuration
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+  scrape_timeout: 5s
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  # 1. FastAPI Web Server & Metrics Middleware
+  - job_name: "parallax-api"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["api:8000"]
+        labels:
+          tier: "web"
+          environment: "production"
+
+  # 2. Standalone GPU Inference Worker
+  - job_name: "parallax-worker"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["worker:8000"]
+        labels:
+          tier: "inference"
+          environment: "production"
+
+  # 3. MinIO S3-Compatible Object Storage
+  - job_name: "minio"
+    metrics_path: "/minio/v2/metrics/cluster"
+    static_configs:
+      - targets: ["minio:9000"]
+        labels:
+          tier: "storage"

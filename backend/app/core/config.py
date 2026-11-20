@@ -42,6 +42,25 @@ class Settings(BaseSettings):
     )
     MAX_CONCURRENT_JOBS: int = 2
     LOG_LEVEL: str = "INFO"
+    CORS_ORIGINS: str = ""
+    REDIS_URL: str | None = None
+    REDIS_MAX_CONNECTIONS: int = 50
+    PGBOUNCER_MODE: bool = False
+    PROCESS_ROLE: str = "all"  # "all", "api", "worker"
+    WORKER_MAX_CONCURRENCY: int = 1
+    INFERENCE_DEVICE: str = "auto"  # "auto", "cuda", "cuda:0", "cpu"
+    REQUIRE_GPU: bool = False
+    SERVE_FRONTEND: bool | None = None
+    METRICS_ENABLED: bool = True
+    LOG_FORMAT: str = "json"
+    STORAGE_BACKEND: str = "local"  # "local", "s3", "minio"
+    S3_ENDPOINT_URL: str | None = None
+    S3_ACCESS_KEY_ID: str | None = None
+    S3_SECRET_ACCESS_KEY: str | None = None
+    S3_REGION_NAME: str = "us-east-1"
+    S3_BUCKET_NAME: str = "parallax-media"
+    S3_FORCE_PATH_STYLE: bool = True
+    S3_PRESIGNED_EXPIRATION_S: int = 3600
 
     # Calibration thresholds from README §5
     P_FAKE_HI: float = 0.65
@@ -68,11 +87,28 @@ class Settings(BaseSettings):
                 raise ValueError("Production environment requires a secure non-default SECRET_KEY")
             if len(self.SECRET_KEY) < 32:
                 raise ValueError("SECRET_KEY must be at least 32 characters in production")
+            self.COOKIE_SECURE = True
+            if "*" in self.cors_origins_list:
+                raise ValueError(
+                    "Wildcard '*' CORS origin is not permitted in production with credentials"
+                )
         return self
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        if not self.CORS_ORIGINS:
+            return []
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def is_production(self) -> bool:
         return self.APP_ENV.lower() == "production"
+
+    @property
+    def should_serve_frontend(self) -> bool:
+        if self.SERVE_FRONTEND is not None:
+            return self.SERVE_FRONTEND
+        return not self.is_production
 
     @property
     def storage_path(self) -> Path:

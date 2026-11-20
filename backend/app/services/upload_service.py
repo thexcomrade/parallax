@@ -79,6 +79,7 @@ def process_upload_stream(
     stream: BinaryIO,
     filename: str,
     content_length: int | None = None,
+    file_id: str | None = None,
 ) -> UploadMetadata:
     """Stream incoming upload to a temporary file, validate, and move to permanent storage.
 
@@ -169,7 +170,7 @@ def process_upload_stream(
             ) from e
 
         # 5. Move validated file to permanent UUID path
-        final_id = uuid.uuid4().hex
+        final_id = file_id if file_id else uuid.uuid4().hex
         final_path = uploads_dir / f"{final_id}{ext}"
         os.replace(temp_path, final_path)
 

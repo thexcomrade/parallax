@@ -21,11 +21,13 @@ from app.core.errors import AppException, NotFoundException
 from app.db.models import Analysis, AnalysisArtifact
 from app.schemas.analysis import (
     AnalysisDetail,
+    AnalysisPublicDetail,
     AnalysisSummary,
     ArtifactItem,
     TimelineItem,
 )
 from app.services.job_runner import job_runner
+from app.services.storage_s3 import get_storage_service
 from app.services.upload_service import UploadMetadata
 
 logger = logging.getLogger("parallax.analysis")
@@ -40,14 +42,15 @@ class AnalysisService:
         db: Session,
         user_id: int,
         upload: UploadMetadata,
+        analysis_id: str | None = None,
     ) -> Analysis:
         """Create new Analysis record and enqueue background processing."""
-        analysis_id = str(uuid.uuid4())
-        artifact_dir = settings.storage_path / "artifacts" / analysis_id
+        aid = analysis_id or str(uuid.uuid4())
+        artifact_dir = settings.storage_path / "artifacts" / aid
         artifact_dir.mkdir(parents=True, exist_ok=True)
 
         analysis = Analysis(
-            id=analysis_id,
+            id=aid,
             user_id=user_id,
             original_name=upload.original_name,
             sha256=upload.sha256,
@@ -58,6 +61,7 @@ class AnalysisService:
             audio_present=upload.audio_present,
             model_version="0.0.0",
             model_mode="untrained",
+            video_path=str(upload.saved_path),
         )
         db.add(analysis)
         db.commit()
@@ -65,7 +69,7 @@ class AnalysisService:
 
         # Enqueue ML job
         await job_runner.enqueue(
-            analysis_id=analysis_id,
+            analysis_id=aid,
             video_path=upload.saved_path,
             artifact_dir=artifact_dir,
         )
@@ -89,7 +93,11 @@ class AnalysisService:
             term = f"%{q.strip()}%"
             conditions.append(or_(Analysis.original_name.ilike(term), Analysis.id.ilike(term)))
         if verdict and verdict.strip() and verdict.upper() != "ALL":
-            conditions.append(Analysis.verdict == verdict.upper())
+            v_norm = verdict.strip().upper()
+            if v_norm in ("AUTHENTIC", "REAL"):
+                conditions.append(Analysis.verdict.in_(["AUTHENTIC", "REAL"]))
+            else:
+                conditions.append(Analysis.verdict == v_norm)
 
         total_stmt = select(func.count(Analysis.id)).where(*conditions)
         total = db.execute(total_stmt).scalar() or 0
@@ -151,6 +159,36 @@ class AnalysisService:
         )
 
     @staticmethod
+    def get_public_analysis_detail(analysis: Analysis) -> AnalysisPublicDetail:
+        """Format an Analysis model into a restricted public schema without internal metrics.
+
+        Exposes strictly binary detection verdict ('REAL' or 'FAKE') and non-diagnostic
+        metadata. Probabilities, DWF weights, modality scores, and timelines are withheld.
+        """
+        pub_verdict: str | None = None
+        if analysis.verdict:
+            norm = analysis.verdict.strip().upper()
+            if norm in ("AUTHENTIC", "REAL"):
+                pub_verdict = "REAL"
+            elif norm == "FAKE":
+                pub_verdict = "FAKE"
+            else:
+                pub_verdict = norm
+
+        return AnalysisPublicDetail(
+            id=analysis.id,
+            original_name=analysis.original_name,
+            status=analysis.status,
+            stage=analysis.stage,
+            verdict=pub_verdict,
+            duration_s=analysis.duration_s,
+            audio_present=analysis.audio_present,
+            created_at=analysis.created_at,
+            completed_at=analysis.completed_at,
+            error=analysis.error,
+        )
+
+    @staticmethod
     def get_artifact_path(analysis: Analysis, artifact_name: str) -> Path:
         """Resolve and validate an artifact file path with traversal guards."""
         if not SAFE_ARTIFACT_RE.match(artifact_name) or ".." in artifact_name:
@@ -179,17 +217,37 @@ class AnalysisService:
     @staticmethod
     def delete_analysis(db: Session, analysis: Analysis) -> None:
         """Delete an analysis, its artifacts directory, and uploaded video."""
-        # 1. Remove artifacts folder
+        # 0. Cancel active background pipeline execution task if running
+        job_runner.cancel_job(analysis.id)
+
+        # 1. Remove artifacts folder (local and S3)
         artifact_dir = settings.storage_path / "artifacts" / analysis.id
         if artifact_dir.exists():
             shutil.rmtree(artifact_dir, ignore_errors=True)
 
-        # 2. Remove uploaded source video if present
-        uploads_dir = settings.storage_path / "uploads"
-        # Search by SHA or remove matching files
+        with contextlib.suppress(Exception):
+            get_storage_service().delete_prefix(f"artifacts/{analysis.id}/")
+
+        # 2. Remove uploaded source video if present (local and S3)
+        uploads_dir = (settings.storage_path / "uploads").resolve()
+
+        if analysis.video_path:
+            with contextlib.suppress(Exception):
+                get_storage_service().delete_object(analysis.video_path)
+
+        # Priority A: Check explicit video_path stored on analysis record
+        if analysis.video_path:
+            stored_path = Path(analysis.video_path).resolve()
+            if stored_path.is_relative_to(uploads_dir) and stored_path.is_file():
+                with contextlib.suppress(OSError):
+                    stored_path.unlink()
+
+        # Priority B: Fallback search by analysis.id in uploads directory (for legacy records)
         for p in uploads_dir.glob(f"*{analysis.id}*"):
-            with contextlib.suppress(OSError):
-                p.unlink()
+            resolved_p = p.resolve()
+            if resolved_p.is_relative_to(uploads_dir) and resolved_p.is_file():
+                with contextlib.suppress(OSError):
+                    resolved_p.unlink()
 
         # 3. Delete database row (cascades to analysis_artifacts)
         db.delete(analysis)

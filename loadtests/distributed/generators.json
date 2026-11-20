@@ -1,0 +1,44 @@
+{
+  "environment": "staging",
+  "local_host": {
+    "id": "local-generator-node",
+    "host": "localhost",
+    "enabled": true,
+    "max_vus": 1000,
+    "os": "Windows 11 / WSL2 Docker",
+    "cpu_logical_cores": 8,
+    "ram_gb": 15.84
+  },
+  "external_generators": [
+    {
+      "id": "generator-node-01",
+      "host": "192.168.72.201",
+      "ssh_user": "loadtest",
+      "ssh_port": 22,
+      "enabled": false,
+      "max_vus": 5000,
+      "status": "UNPROVISIONED",
+      "notes": "External dedicated Linux worker node (Target capacity: 5K–10K VUs)"
+    },
+    {
+      "id": "generator-node-02",
+      "host": "192.168.72.202",
+      "ssh_user": "loadtest",
+      "ssh_port": 22,
+      "enabled": false,
+      "max_vus": 10000,
+      "status": "UNPROVISIONED",
+      "notes": "External high-capacity Linux worker node (Target capacity: 10K–20K VUs)"
+    },
+    {
+      "id": "generator-node-03",
+      "host": "192.168.72.203",
+      "ssh_user": "loadtest",
+      "ssh_port": 22,
+      "enabled": false,
+      "max_vus": 15000,
+      "status": "UNPROVISIONED",
+      "notes": "External high-capacity Linux worker node (Target capacity: 15K–30K VUs)"
+    }
+  ]
+}

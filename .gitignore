@@ -1,71 +1,73 @@
-# Environment & secrets
+```gitignore
+# Environment & Secrets
 .env
+.env.*
 *.env
 !.env.example
 
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
-.Python
-env/
-venv/
 .venv/
+venv/
+env/
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-/lib/
-/lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
 
 # Testing & Linting
-.mypy_cache/
 .pytest_cache/
+.mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
+test-results/
+playwright-report/
+blob-report/
 
 # Node & Frontend
 node_modules/
-dist/
+frontend/dist/
 dist-ssr/
 *.local
-.npm
-frontend/dist/
-frontend/test-results/
-playwright-report/
-blob-report/
-playwright/.cache/
+.npm/
 
-# Storage & Local Databases
-storage/
-/datasets/raw/
-/datasets/processed/
+# Data & Storage
+/datasets/
+/storage/
 *.db
 *.sqlite
 *.sqlite3
 
-# Model weights & Checkpoints
-checkpoints/*.pt
-checkpoints/**/*.pt
-weights/*.pt
-weights/*.bin
-backend/app/ml/weights/*.pt
-!backend/app/ml/weights/.gitkeep
-!backend/app/ml/weights/model_card.json
+# Generated Reports & Experiments
+/reports/
+/experiments/
+/docs/
+/backup/
+/backups/
+/archives/
+/archive/
+
+# Model Weights & Checkpoints
+/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+/backend/app/ml/weights/*
+!/backend/app/ml/weights/.gitkeep
+!/backend/app/ml/weights/model_card.json
 
 # OS & Editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated TypeScript cache
+*.tsbuildinfo
+
+# Dataset manifests
+/datasets/manifests/

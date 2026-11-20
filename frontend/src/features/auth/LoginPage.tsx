@@ -186,7 +186,7 @@ export const LoginPage: React.FC = () => {
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#171F2D] border border-[#253247] text-[#648CFF] font-medium">
               </span>
             </div>
-            <span className="text-xs text-[#91A0B8]">Audio-Visual Deepfake Forensics</span>
+            <span className="text-xs text-[#91A0B8]">Multimodal Audio-Visual Deepfake Detection System</span>
           </div>
         </div>
 

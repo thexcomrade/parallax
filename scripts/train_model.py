@@ -25,7 +25,12 @@ BACKEND_DIR = REPO_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from training.train import load_config, run_smoke_training, train_model
+from training.train import (
+    compute_and_save_audio_norm_stats,
+    load_config,
+    run_smoke_training,
+    train_model,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -71,9 +76,19 @@ def main() -> None:
     parser.add_argument("--dropout", type=float, default=0.25, help="Dropout probability for classifier heads")
     parser.add_argument("--audio-layernorm", dest="audio_layernorm", action="store_true", default=True, help="Enable LayerNorm on audio patch embeddings")
     parser.add_argument("--no-audio-layernorm", dest="audio_layernorm", action="store_false", help="Disable LayerNorm on audio patch embeddings")
+    parser.add_argument("--audio-input-norm", dest="audio_input_norm", action="store_true", default=True, help="Enable AudioInputNorm channel standardization")
+    parser.add_argument("--no-audio-input-norm", dest="audio_input_norm", action="store_false", help="Disable AudioInputNorm channel standardization")
     parser.add_argument("--mismatch-prob", type=float, default=0.0, help="Probability of cross-modal mismatch augmentation")
     parser.add_argument("--checkpoint-metric", type=str, default="val_auc", choices=["val_auc", "val_f1"], help="Primary metric for checkpoint selection")
     parser.add_argument("--resume", type=Path, default=None, help="Path to checkpoint from which to resume training")
+    parser.add_argument("--val-manifest", type=Path, default=None, help="Path to validation manifest CSV")
+    parser.add_argument("--audio-norm-stats", type=Path, default=None, help="Path to audio normalization statistics file (.pt)")
+    parser.add_argument("--experiment-dir", type=Path, default=None, help="Directory for isolated experiment artifacts")
+    parser.add_argument("--compute-audio-norm", action="store_true", default=False, help="Precompute audio normalization statistics from training manifest before training")
+    parser.add_argument("--dwf-min-weight", type=float, default=0.0, help="Minimum weight bound for DWF fusion (prevents modality starvation)")
+    parser.add_argument("--dwf-max-weight", type=float, default=1.0, help="Maximum weight bound for DWF fusion")
+    parser.add_argument("--modality-dropout", type=float, default=0.0, help="Probability of modality dropout during training")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     args = parser.parse_args()
 
     device_str = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -81,6 +96,24 @@ def main() -> None:
     logger.info("Using compute device: %s", device)
 
     args.output_checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    if args.experiment_dir is not None:
+        args.experiment_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.compute_audio_norm:
+        norm_stats_path = args.audio_norm_stats
+        if norm_stats_path is None:
+            if args.experiment_dir is not None:
+                norm_stats_path = args.experiment_dir / "audio_norm_stats.pt"
+            else:
+                norm_stats_path = args.output_checkpoint.parent / "audio_norm_stats.pt"
+        logger.info("Computing audio normalization statistics from %s -> %s", args.manifest, norm_stats_path)
+        compute_and_save_audio_norm_stats(args.manifest, norm_stats_path)
+        args.audio_norm_stats = norm_stats_path
+    elif args.audio_norm_stats is None and args.experiment_dir is not None:
+        candidate_norm = args.experiment_dir / "audio_norm_stats.pt"
+        if candidate_norm.exists():
+            args.audio_norm_stats = candidate_norm
+            logger.info("Using existing audio normalization statistics from %s", candidate_norm)
 
     if args.smoke:
         logger.info("Starting AVT²-DWF SMOKE TRAINING verification...")
@@ -128,10 +161,20 @@ def main() -> None:
         config["training"]["classifier_dropout"] = args.dropout
     if args.audio_layernorm is not None:
         config["training"]["audio_layernorm"] = args.audio_layernorm
+    if args.audio_input_norm is not None:
+        config["training"]["audio_input_norm"] = args.audio_input_norm
     if args.mismatch_prob is not None:
         config["training"]["mismatch_prob"] = args.mismatch_prob
     if args.checkpoint_metric is not None:
         config["training"]["checkpoint_metric"] = args.checkpoint_metric
+    if args.dwf_min_weight is not None:
+        config["training"]["dwf_min_weight"] = args.dwf_min_weight
+    if args.dwf_max_weight is not None:
+        config["training"]["dwf_max_weight"] = args.dwf_max_weight
+    if args.modality_dropout is not None:
+        config["training"]["modality_dropout_prob"] = args.modality_dropout
+    if args.seed is not None:
+        config["training"]["seed"] = args.seed
 
     logger.info("Starting full model training with config: %s", args.config)
     summary = train_model(
@@ -140,6 +183,9 @@ def main() -> None:
         output_checkpoint=args.output_checkpoint,
         device=device,
         resume_checkpoint=args.resume,
+        val_manifest_path=args.val_manifest,
+        audio_norm_stats=args.audio_norm_stats,
+        experiment_dir=args.experiment_dir,
     )
     summary_filename = f"{args.output_checkpoint.stem}_summary.json"
     summary_path = args.output_checkpoint.parent / summary_filename

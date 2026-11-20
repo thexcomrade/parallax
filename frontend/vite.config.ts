@@ -26,7 +26,6 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           motion: ['motion'],
-          charts: ['d3-scale', 'd3-shape'],
         },
       },
     },

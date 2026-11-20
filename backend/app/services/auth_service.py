@@ -5,7 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.errors import AppException, InvalidCredentialsException, UnauthorizedException
+from app.core.errors import (
+    AppException,
+    InvalidCredentialsException,
+    NotFoundException,
+    UnauthorizedException,
+)
+from app.core.metrics import AUTH_FAILURES_TOTAL
 from app.core.security import (
     DUMMY_PASSWORD_HASH,
     generate_refresh_token,
@@ -18,8 +24,8 @@ from app.db.models import RefreshToken, User
 
 class AuthService:
     @staticmethod
-    def register_user(db: Session, email: str, password: str) -> User:
-        """Register a new user with normalized email and Argon2 hash."""
+    def register_user(db: Session, email: str, password: str, role: str = "public") -> User:
+        """Register a new user with normalized email, role and Argon2 hash."""
         normalized_email = email.strip().lower()
 
         existing = db.execute(
@@ -33,8 +39,25 @@ class AuthService:
             )
 
         hashed = hash_password(password)
-        user = User(email=normalized_email, password_hash=hashed)
+        user = User(email=normalized_email, password_hash=hashed, role=role)
         db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def update_user_role(db: Session, user_id: int, role: str) -> User:
+        """Update a user's role (admin only)."""
+        if role not in ("public", "operator", "admin"):
+            raise AppException(
+                code="INVALID_ROLE",
+                message="Role must be one of: public, operator, admin",
+                status_code=400,
+            )
+        user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+        if not user:
+            raise NotFoundException(f"User with id {user_id} not found")
+        user.role = role
         db.commit()
         db.refresh(user)
         return user
@@ -48,9 +71,11 @@ class AuthService:
         if not user:
             # Equalize timing by executing an Argon2 verification against pre-computed dummy hash
             verify_password("dummy-password", DUMMY_PASSWORD_HASH)
+            AUTH_FAILURES_TOTAL.labels(reason="invalid_credentials").inc()
             raise InvalidCredentialsException()
 
         if not verify_password(password, user.password_hash):
+            AUTH_FAILURES_TOTAL.labels(reason="invalid_credentials").inc()
             raise InvalidCredentialsException()
 
         return user

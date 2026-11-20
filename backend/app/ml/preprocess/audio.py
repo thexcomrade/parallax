@@ -39,12 +39,24 @@ class AudioPreprocessResult:
     segment_timestamps: list[float]  # start time in seconds for each 1s segment
 
 
+def _get_ffmpeg_bin() -> str:
+    bin_path = shutil.which("ffmpeg")
+    if bin_path:
+        return bin_path
+    try:
+        import imageio_ffmpeg  # type: ignore[import-untyped]
+
+        return str(imageio_ffmpeg.get_ffmpeg_exe())
+    except ImportError:
+        return "ffmpeg"
+
+
 def _extract_wav_with_ffmpeg(media_path: Path, output_wav: Path, timeout_s: float = 15.0) -> bool:
     """Extract audio from video to 16kHz mono 16-bit PCM WAV.
 
     Returns False if file contains no audio stream.
     """
-    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+    ffmpeg_bin = _get_ffmpeg_bin()
     cmd = [
         ffmpeg_bin,
         "-y",

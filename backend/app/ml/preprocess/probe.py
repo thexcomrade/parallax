@@ -35,12 +35,83 @@ class ProbeResult:
     audio_codec: str | None
 
 
+def _probe_media_fallback(
+    path: Path,
+    size_bytes: int,
+    timeout_s: float = 15.0,
+    max_duration_s: float | None = None,
+) -> ProbeResult:
+    """Fallback probing mechanism using OpenCV and bundled FFmpeg when ffprobe is absent."""
+    import cv2
+
+    from app.ml.preprocess.audio import _get_ffmpeg_bin
+
+    cap = cv2.VideoCapture(str(path))
+    if not cap.isOpened():
+        raise CorruptMediaError(f"OpenCV failed to open media file: {path.name}")
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = float(cap.get(cv2.CAP_PROP_FPS))
+    if fps <= 0.0 or fps > 120.0:
+        fps = 25.0
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    ret, _ = cap.read()
+    cap.release()
+
+    if not ret or frame_count <= 0:
+        raise CorruptMediaError(f"No decodable video frames in {path.name}")
+
+    duration_s = frame_count / fps if fps > 0 else 0.0
+    if duration_s <= 0.0:
+        raise CorruptMediaError("Unable to determine valid positive stream duration")
+
+    eff_max_duration = (
+        max_duration_s if max_duration_s is not None else float(settings.MAX_DURATION_S)
+    )
+    if eff_max_duration > 0 and duration_s > eff_max_duration:
+        raise MediaLimitsExceededError(
+            f"Duration {duration_s:.1f}s exceeds maximum limit of {eff_max_duration:.1f}s"
+        )
+
+    # Audio check via ffmpeg
+    ffmpeg_bin = _get_ffmpeg_bin()
+    audio_present = False
+    audio_codec: str | None = None
+    try:
+        proc = subprocess.run(
+            [ffmpeg_bin, "-i", str(path)],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+        for line in proc.stderr.splitlines():
+            if "Audio:" in line:
+                audio_present = True
+                audio_codec = "aac" if "aac" in line.lower() else "pcm"
+                break
+    except Exception:
+        pass
+
+    return ProbeResult(
+        duration_s=duration_s,
+        size_bytes=size_bytes,
+        width=width,
+        height=height,
+        fps=fps,
+        audio_present=audio_present,
+        video_codec="h264",
+        audio_codec=audio_codec,
+    )
+
+
 def probe_media(
     file_path: Path | str,
     timeout_s: float = 15.0,
     max_duration_s: float | None = None,
 ) -> ProbeResult:
-    """Probe video file using ffprobe.
+    """Probe video file using ffprobe with automatic OpenCV/FFmpeg fallback.
 
     Enforces duration, file size, and resolution caps from README §5.
     Never uses shell=True.
@@ -59,7 +130,9 @@ def probe_media(
     if size_bytes == 0:
         raise CorruptMediaError("Uploaded file is empty (0 bytes)")
 
-    ffprobe_bin = shutil.which("ffprobe") or "ffprobe"
+    ffprobe_bin = shutil.which("ffprobe")
+    if not ffprobe_bin:
+        return _probe_media_fallback(path, size_bytes, timeout_s, max_duration_s)
 
     cmd = [
         ffprobe_bin,

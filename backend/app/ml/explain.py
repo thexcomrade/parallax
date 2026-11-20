@@ -169,6 +169,10 @@ def _spectrogram_overlay_png(
     per_window_scores: anomaly scores per window
     window_timestamps: midpoint timestamps for each window
     """
+    if log_mel.numel() == 0:
+        cv2.imwrite(str(out_path), np.zeros((64, 100, 3), dtype=np.uint8))
+        return
+
     mel_np = log_mel.numpy()
     # Normalise to [0, 255]
     mel_norm = (mel_np - mel_np.min()) / (mel_np.max() - mel_np.min() + 1e-8)
@@ -278,8 +282,16 @@ def generate_explanations(
                         ),
                     ]
                 )
+                # Determine device of model_vit
+                try:
+                    vit_device = next(model_vit.parameters()).device
+                except StopIteration:
+                    vit_device = torch.device("cpu")
+
                 frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                frame_tensor = transform(frame_rgb).unsqueeze(0)  # [1, 3, 224, 224]
+                frame_tensor = (
+                    transform(frame_rgb).unsqueeze(0).to(device=vit_device)
+                )  # [1, 3, 224, 224]
 
                 attentions = _get_vit_attentions(model_vit, frame_tensor)
                 if attentions:

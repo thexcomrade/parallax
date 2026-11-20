@@ -69,7 +69,7 @@ export type AnalysisStage =
   | 'fusion'
   | 'explain'
   | 'done';
-export type Verdict = 'AUTHENTIC' | 'FAKE' | 'INCONCLUSIVE';
+export type Verdict = 'AUTHENTIC' | 'REAL' | 'FAKE' | 'INCONCLUSIVE';
 
 export interface AnalysisCreated {
   id: string;

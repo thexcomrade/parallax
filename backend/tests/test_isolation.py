@@ -30,6 +30,7 @@ def _create_user(db: Session, email: str) -> User:
         db=db,
         email=email,
         password="SecurePassword2026!Long",
+        role="operator",
     )
 
 

@@ -14,11 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import torch
-import torch.nn.functional as F
-from torch import Tensor
+import torch  # pyright: ignore[reportMissingImports]
+import torch.nn.functional as F  # pyright: ignore[reportMissingImports]
+from torch import Tensor  # pyright: ignore[reportMissingImports]
 
 from app.core.config import settings
+from app.ml.device import get_inference_device
 from app.ml.models.avt2_dwf import AVT2DWF, AVT2Result
 
 logger = logging.getLogger(__name__)
@@ -45,42 +46,83 @@ class InferenceResult:
     model_version: str
 
 
-def load_model() -> None:
+def load_model(
+    checkpoint_path: Path | str | None = None,
+    device: torch.device | None = None,
+) -> None:
     """Load (or initialise random) AVT2DWF model. Called once at startup."""
     global _model, MODEL_MODE, CHECKPOINT_HASH
 
-    model = AVT2DWF(pretrained_vit=False)  # always False on inference host
-    model.eval()
+    target_device = device if device is not None else get_inference_device()
 
-    checkpoint_path = Path(settings.MODEL_PATH)
-    if checkpoint_path.exists() and checkpoint_path.stat().st_size > 0:
+    raw_path = Path(checkpoint_path) if checkpoint_path else Path(settings.MODEL_PATH)
+    path_to_use = raw_path
+    if not path_to_use.is_absolute():
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        backend_dir = Path(__file__).resolve().parent.parent.parent
+        if (backend_dir / path_to_use).exists():
+            path_to_use = backend_dir / path_to_use
+        elif (repo_root / path_to_use).exists():
+            path_to_use = repo_root / path_to_use
+
+    if path_to_use.exists() and path_to_use.stat().st_size > 0:
         try:
             state = torch.load(
-                checkpoint_path,
+                path_to_use,
                 map_location="cpu",
                 weights_only=True,
             )
-            if isinstance(state, dict) and "model_state_dict" in state:
-                model.load_state_dict(state["model_state_dict"])
-            else:
-                model.load_state_dict(state)
+            sd = (
+                state["model_state_dict"]
+                if isinstance(state, dict) and "model_state_dict" in state
+                else state
+            )
+            has_audio_norm = any(
+                k.startswith(("audio_encoder.proj_norm", "audio_encoder.norm"))
+                for k in sd
+            )
+            has_input_norm = any(k.startswith("audio_encoder.input_norm") for k in sd)
+            has_aux = any(
+                k.startswith(("audio_classifier.", "video_classifier."))
+                for k in sd
+            )
+
+            model = AVT2DWF(
+                pretrained_vit=False,
+                audio_layernorm=has_audio_norm,
+                audio_input_norm=has_input_norm,
+                auxiliary_heads=has_aux,
+            )
+            model.load_state_dict(sd, strict=False)
+            model.to(target_device)
+            model.eval()
+
             MODEL_MODE = "trained"
-            # SHA-256 of checkpoint for provenance
-            sha = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
+            sha = hashlib.sha256(path_to_use.read_bytes()).hexdigest()
             CHECKPOINT_HASH = sha[:16]
-            logger.info("Loaded checkpoint %s (sha256:%s…)", checkpoint_path, CHECKPOINT_HASH)
+            logger.info(
+                "Loaded checkpoint %s on %s (sha256:%s…)",
+                path_to_use,
+                target_device,
+                CHECKPOINT_HASH,
+            )
+            _model = model
+            return
         except Exception:
-            logger.exception("Failed to load checkpoint %s; running untrained.", checkpoint_path)
+            logger.exception("Failed to load checkpoint %s; running untrained.", path_to_use)
             MODEL_MODE = "untrained"
             CHECKPOINT_HASH = None
-    else:
-        MODEL_MODE = "untrained"
-        CHECKPOINT_HASH = None
-        logger.warning(
-            "No checkpoint found at %s — MODEL_MODE=untrained. Scores are not meaningful.",
-            checkpoint_path,
-        )
 
+    model = AVT2DWF(pretrained_vit=False)
+    model.to(target_device)
+    model.eval()
+    MODEL_MODE = "untrained"
+    CHECKPOINT_HASH = None
+    logger.warning(
+        "No checkpoint found at %s — MODEL_MODE=untrained on %s. Scores are not meaningful.",
+        path_to_use,
+        target_device,
+    )
     _model = model
 
 
@@ -97,6 +139,7 @@ def run_inference(
     audio_segments: Tensor,
     audio_mask: Tensor,
     model_version: str = "0.0.0",
+    device: torch.device | None = None,
 ) -> InferenceResult:
     """Run AVT²-DWF inference on preprocessed tensors.
 
@@ -105,14 +148,31 @@ def run_inference(
         audio_segments: Tensor[B, K, 104, 100]
         audio_mask:     Tensor[K]
         model_version:  str from model_card.json
+        device:         Optional target torch.device override
 
     Returns:
         InferenceResult — typed result with verdict, weights and scores.
     """
     model = get_model()
+    target_device = device if device is not None else next(model.parameters()).device
+
+    # Ensure all input tensors are on target_device with matching float32 dtypes
+    v_win = video_windows.to(device=target_device, dtype=torch.float32)
+    a_seg = audio_segments.to(device=target_device, dtype=torch.float32)
+    a_msk = audio_mask.to(device=target_device, dtype=torch.float32)
 
     with torch.inference_mode():
-        result: AVT2Result = model(video_windows, audio_segments, audio_mask)
+        try:
+            result: AVT2Result = model(v_win, a_seg, a_msk)
+            if target_device.type == "cuda":
+                torch.cuda.synchronize(target_device)
+        except torch.cuda.OutOfMemoryError as e:
+            logger.error(
+                "CUDA OutOfMemoryError during AVT2-DWF inference on %s: %s",
+                target_device,
+                e,
+            )
+            raise
 
     # Convert logits → calibrated probabilities
     probs: Tensor = F.softmax(result.logits, dim=-1)  # [B, 2]

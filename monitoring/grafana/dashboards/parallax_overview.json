@@ -1,0 +1,244 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "API Health & Latency",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "id": 2,
+      "title": "HTTP Request Throughput",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(parallax_http_requests_total[1m])) by (status)",
+          "legendFormat": "HTTP {{status}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "id": 3,
+      "title": "HTTP Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(parallax_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(parallax_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(parallax_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "id": 4,
+      "title": "Active Requests & Auth Failures",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(parallax_http_active_requests)",
+          "legendFormat": "Active HTTP Requests"
+        },
+        {
+          "expr": "sum(rate(parallax_auth_failures_total[1m]))",
+          "legendFormat": "Auth Failures/s"
+        },
+        {
+          "expr": "sum(rate(parallax_ratelimit_rejections_total[1m]))",
+          "legendFormat": "Rate-Limited/s"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 5,
+      "title": "Database & Queue Observability",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "id": 6,
+      "title": "PostgreSQL Connection Pool",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "parallax_db_pool_size",
+          "legendFormat": "Pool Size"
+        },
+        {
+          "expr": "parallax_db_pool_checked_out",
+          "legendFormat": "Checked Out"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
+      "id": 7,
+      "title": "Redis Queue Depth & Backlog",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "parallax_redis_queue_length",
+          "legendFormat": "Task Stream Depth"
+        },
+        {
+          "expr": "parallax_redis_pending_jobs",
+          "legendFormat": "Consumer Group PEL"
+        },
+        {
+          "expr": "parallax_outbox_backlog_count",
+          "legendFormat": "Outbox Dispatch Backlog"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "id": 8,
+      "title": "Dead-Letter Queue (DLQ) Size",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "parallax_redis_dead_letter_size",
+          "legendFormat": "DLQ Tasks"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 9,
+      "title": "GPU Inference & Worker Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 19 },
+      "id": 10,
+      "title": "GPU VRAM Allocation (GTX 1650 4GB)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "parallax_gpu_vram_allocated_bytes",
+          "legendFormat": "VRAM Allocated ({{device}})"
+        },
+        {
+          "expr": "parallax_gpu_vram_reserved_bytes",
+          "legendFormat": "VRAM Reserved ({{device}})"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 19 },
+      "id": 11,
+      "title": "AVT²-DWF Inference Latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(parallax_inference_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "Inference p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(parallax_inference_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "Inference p95"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 19 },
+      "id": 12,
+      "title": "Worker Concurrency & Heartbeats",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(parallax_worker_active_jobs)",
+          "legendFormat": "Active Inference Tasks"
+        },
+        {
+          "expr": "time() - max(parallax_worker_heartbeat_timestamp)",
+          "legendFormat": "Seconds Since Last Heartbeat"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 13,
+      "title": "Object Storage Operations",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "id": 14,
+      "title": "Storage Upload Throughput",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(parallax_storage_uploads_total[1m])) by (status)",
+          "legendFormat": "Uploads {{status}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "id": 15,
+      "title": "Storage Errors by Operation",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(parallax_storage_errors_total[1m])) by (operation)",
+          "legendFormat": "Error on {{operation}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["parallax", "observability", "production"],
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "PARALLAX — System & Forensic Pipeline Observability",
+  "version": 1
+}

@@ -1,0 +1,132 @@
+# PARALLAX — Prometheus Production Alerting Rules
+
+groups:
+  - name: parallax_api_alerts
+    rules:
+      - alert: APIAvailabilityFailure
+        expr: up{job="parallax-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: web
+        annotations:
+          summary: "PARALLAX API process is unreachable"
+          description: "FastAPI web server has failed health checks for > 1 minute."
+
+      - alert: APIHigh5xxErrorRate
+        expr: (sum(rate(parallax_http_requests_total{status=~"5.."}[5m])) / sum(rate(parallax_http_requests_total[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          tier: web
+        annotations:
+          summary: "API 5xx error rate exceeds 5%"
+          description: "Internal server error rate is {{ $value | humanizePercentage }} over 5m."
+
+      - alert: APIHighP95Latency
+        expr: histogram_quantile(0.95, sum(rate(parallax_http_request_duration_seconds_bucket[5m])) by (le)) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+          tier: web
+        annotations:
+          summary: "API p95 latency exceeds 1.5s"
+          description: "95th percentile request latency is {{ $value }}s over 5m."
+
+  - name: parallax_database_alerts
+    rules:
+      - alert: DatabaseDisconnected
+        expr: parallax_db_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: database
+        annotations:
+          summary: "PostgreSQL database unreachable"
+          description: "Application cannot connect to PostgreSQL database."
+
+      - alert: PostgresConnectionExhaustion
+        expr: (parallax_db_pool_checked_out / parallax_db_pool_size) > 0.85
+        for: 3m
+        labels:
+          severity: warning
+          tier: database
+        annotations:
+          summary: "PostgreSQL connection pool utilization > 85%"
+          description: "Database connection pool is near exhaustion ({{ $value | humanizePercentage }} utilized)."
+
+  - name: parallax_redis_and_queue_alerts
+    rules:
+      - alert: RedisDisconnected
+        expr: parallax_redis_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: broker
+        annotations:
+          summary: "Redis broker disconnected"
+          description: "Redis Streams broker is unreachable."
+
+      - alert: QueueBacklogGrowing
+        expr: parallax_redis_queue_length{stream="parallax:jobs:video_analysis"} > 50
+        for: 10m
+        labels:
+          severity: warning
+          tier: queue
+        annotations:
+          summary: "Video analysis queue backlog > 50"
+          description: "Queue depth has exceeded 50 pending tasks for > 10m; worker scaling required."
+
+      - alert: DeadLetterQueueGrowth
+        expr: parallax_redis_dead_letter_size > 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: queue
+        annotations:
+          summary: "Dead-letter queue contains unrecoverable tasks"
+          description: "{{ $value }} tasks have failed maximum retries and were diverted to dead letter."
+
+      - alert: OutboxBacklogHigh
+        expr: parallax_outbox_backlog_count > 100
+        for: 5m
+        labels:
+          severity: warning
+          tier: outbox
+        annotations:
+          summary: "Transactional outbox backlog > 100"
+          description: "Pending database outbox records are accumulating without dispatch to Redis."
+
+  - name: parallax_gpu_worker_alerts
+    rules:
+      - alert: GPUVRAMCriticalThreshold
+        expr: parallax_gpu_vram_allocated_bytes{device=~"NVIDIA.*"} > 3680000000
+        for: 3m
+        labels:
+          severity: critical
+          tier: gpu
+        annotations:
+          summary: "GPU VRAM utilization exceeds 90%"
+          description: "GTX 1650 4GB VRAM allocation has exceeded 3.68 GB, risking CUDA OOM."
+
+      - alert: WorkerHeartbeatMissing
+        expr: (time() - parallax_worker_heartbeat_timestamp) > 60
+        for: 1m
+        labels:
+          severity: critical
+          tier: worker
+        annotations:
+          summary: "GPU inference worker heartbeat missing"
+          description: "Inference worker {{ $labels.worker_id }} has been silent for > 60 seconds."
+
+  - name: parallax_storage_alerts
+    rules:
+      - alert: StorageUploadFailureRate
+        expr: (sum(rate(parallax_storage_uploads_total{status="failure"}[5m])) / sum(rate(parallax_storage_uploads_total[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          tier: storage
+        annotations:
+          summary: "Object storage upload failure rate > 5%"
+          description: "Media uploads to S3/MinIO are experiencing elevated error rates."

@@ -1,0 +1,142 @@
+services:
+  staging-postgres:
+    image: postgres:16-alpine
+    container_name: parallax-staging-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-parallax_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parallax_staging_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-parallax_staging}
+    ports:
+      - "5432:5432"
+    volumes:
+      - parallax_staging_postgres_data:/var/lib/postgresql/data
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parallax_staging -d parallax_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  staging-redis:
+    image: redis:7-alpine
+    container_name: parallax-staging-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - parallax_staging_redis_data:/data
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  staging-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: parallax-api:latest
+    container_name: parallax-staging-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.staging
+    environment:
+      - APP_ENV=staging
+      - PROCESS_ROLE=api
+      - SERVE_FRONTEND=true
+      - METRICS_ENABLED=true
+      - LOG_FORMAT=json
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-parallax_staging}:${POSTGRES_PASSWORD:-parallax_staging_pass_2026}@staging-postgres:5432/${POSTGRES_DB:-parallax_staging}
+      - REDIS_URL=redis://staging-redis:6379/0
+      - STORAGE_DIR=/app/storage
+      - STORAGE_BACKEND=local
+      - S3_ENDPOINT_URL=http://staging-minio:9000
+      - S3_BUCKET_NAME=parallax-staging-media
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-parallax_staging_minio}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minio_staging_secure_pass_2026}
+    command: ["sh", "-c", "alembic -c backend/alembic.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend"]
+    depends_on:
+      staging-postgres:
+        condition: service_healthy
+      staging-redis:
+        condition: service_healthy
+    volumes:
+      - parallax_staging_storage:/app/storage
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  staging-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: parallax-worker:latest
+    container_name: parallax-staging-worker
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - APP_ENV=staging
+      - PROCESS_ROLE=worker
+      - WORKER_MAX_CONCURRENCY=1
+      - REQUIRE_GPU=true
+      - INFERENCE_DEVICE=cuda:0
+      - LOG_FORMAT=json
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-parallax_staging}:${POSTGRES_PASSWORD:-parallax_staging_pass_2026}@staging-postgres:5432/${POSTGRES_DB:-parallax_staging}
+      - REDIS_URL=redis://staging-redis:6379/0
+      - STORAGE_DIR=/app/storage
+      - STORAGE_BACKEND=local
+      - S3_ENDPOINT_URL=http://staging-minio:9000
+      - S3_BUCKET_NAME=parallax-staging-media
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-parallax_staging_minio}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minio_staging_secure_pass_2026}
+    command: ["python", "-m", "app.workers.inference_worker"]
+    depends_on:
+      staging-postgres:
+        condition: service_healthy
+      staging-redis:
+        condition: service_healthy
+    volumes:
+      - parallax_staging_storage:/app/storage
+    networks:
+      - parallax-staging-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.healthcheck"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+
+networks:
+  parallax-staging-network:
+    driver: bridge
+    name: parallax-staging-network
+
+volumes:
+  parallax_staging_storage:
+    name: parallax_staging_storage
+  parallax_staging_postgres_data:
+    name: parallax_staging_postgres_data
+  parallax_staging_redis_data:
+    name: parallax_staging_redis_data

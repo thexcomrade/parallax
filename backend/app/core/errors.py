@@ -1,24 +1,11 @@
-import logging
-import sys
 
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
+from app.core.logging import get_logger
 
-# Setup structured logger
-logger = logging.getLogger("parallax")
-logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    _log_fmt = (
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s",'
-        ' "module": "%(name)s", "message": "%(message)s"}'
-    )
-    formatter = logging.Formatter(_log_fmt)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+logger = get_logger("errors")
 
 
 class AppException(Exception):
@@ -75,6 +62,15 @@ class NotFoundException(AppException):
             code="NOT_FOUND",
             message=message,
             status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+
+class ConflictException(AppException):
+    def __init__(self, message: str = "Resource conflict") -> None:
+        super().__init__(
+            code="CONFLICT",
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
         )
 
 

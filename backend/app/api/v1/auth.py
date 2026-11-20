@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_current_admin, get_current_user, get_db
 from app.core.errors import UnauthorizedException
-from app.core.rate_limit import limiter
+from app.core.rate_limit import get_login_rate_limit_key, limiter
 from app.core.security import create_access_token
 from app.db.models import User
 from app.schemas.auth import (
@@ -14,6 +14,7 @@ from app.schemas.auth import (
     UserLogin,
     UserRegister,
     UserResponse,
+    UserRoleUpdate,
 )
 from app.services.auth_service import AuthService
 
@@ -35,7 +36,23 @@ def register(
     payload: UserRegister,
     db: Session = Depends(get_db),
 ) -> UserResponse:
-    user = AuthService.register_user(db, payload.email, payload.password)
+    user = AuthService.register_user(db, payload.email, payload.password, role="public")
+    return UserResponse.model_validate(user)
+
+
+@router.patch(
+    "/users/{user_id}/role",
+    response_model=UserResponse,
+    summary="Update user role (Administrator only)",
+)
+def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    _admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    """Allow authorized administrators to promote or demote user roles."""
+    user = AuthService.update_user_role(db=db, user_id=user_id, role=payload.role)
     return UserResponse.model_validate(user)
 
 
@@ -44,7 +61,7 @@ def register(
     response_model=TokenResponse,
     summary="Authenticate and receive access token + rotating refresh cookie",
 )
-@limiter.limit(AUTH_LIMIT)
+@limiter.limit(AUTH_LIMIT, key_func=get_login_rate_limit_key)
 def login(
     request: Request,
     response: Response,

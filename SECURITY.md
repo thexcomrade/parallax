@@ -9,7 +9,7 @@ This document outlines the security architecture, threat model mitigations, auth
 - **Password Hashing**: Uses **Argon2id** (`time_cost=3`, `memory_cost=65536`, `parallelism=4`, salt length 16 bytes). Plaintext passwords are never logged or stored.
 - **Timing Attack Mitigation**: When authenticating unknown emails, a constant-time dummy Argon2 hash computation is performed to prevent account enumeration via timing differences.
 - **Access Tokens**: Short-lived (15-minute) asymmetric/HMAC JWTs stored solely in client memory. Never stored in `localStorage` or `sessionStorage`.
-- **Refresh Tokens & Family Revocation**: Stored in HTTP-only, `SameSite=Lax`, `Secure` cookies. Hashed using SHA-256 before database storage. Replay of an invalidated refresh token triggers immediate invalidation of the entire token family (forced session termination across all devices).
+- **Refresh Tokens & Family Revocation**: Stored in HTTP-only, `SameSite=Strict`, `Secure` cookies. Hashed using SHA-256 before database storage. Replay of an invalidated refresh token triggers immediate invalidation of the entire token family (forced session termination across all devices).
 
 ---
 

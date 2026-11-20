@@ -1,24 +1,51 @@
+import React, { Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { LoginPage } from '@/features/auth/LoginPage';
-import { RegisterPage } from '@/features/auth/RegisterPage';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
-import { AnalyzePage } from '@/features/analyze/AnalyzePage';
-import { ReportPage } from '@/features/report/ReportPage';
-import { HistoryPage } from '@/features/history/HistoryPage';
-import { LibraryPage } from '@/features/library/LibraryPage';
-import { IntelPage } from '@/features/intel/IntelPage';
-import { SettingsPage } from '@/features/settings/SettingsPage';
+import { RouteLoadingFallback } from '@/components/layout/RouteLoadingFallback';
+
+const LoginPage = React.lazy(() =>
+  import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage }))
+);
+const RegisterPage = React.lazy(() =>
+  import('@/features/auth/RegisterPage').then((m) => ({ default: m.RegisterPage }))
+);
+const DashboardPage = React.lazy(() =>
+  import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const AnalyzePage = React.lazy(() =>
+  import('@/features/analyze/AnalyzePage').then((m) => ({ default: m.AnalyzePage }))
+);
+const ReportPage = React.lazy(() =>
+  import('@/features/report/ReportPage').then((m) => ({ default: m.ReportPage }))
+);
+const HistoryPage = React.lazy(() =>
+  import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage }))
+);
+const LibraryPage = React.lazy(() =>
+  import('@/features/library/LibraryPage').then((m) => ({ default: m.LibraryPage }))
+);
+const IntelPage = React.lazy(() =>
+  import('@/features/intel/IntelPage').then((m) => ({ default: m.IntelPage }))
+);
+const SettingsPage = React.lazy(() =>
+  import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
+
+const lazyElement = (Component: React.ComponentType) => (
+  <Suspense fallback={<RouteLoadingFallback />}>
+    <Component />
+  </Suspense>
+);
 
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <LoginPage />,
+    element: lazyElement(LoginPage),
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: lazyElement(RegisterPage),
   },
   {
     path: '/app',
@@ -29,7 +56,7 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <DashboardPage />,
+            element: lazyElement(DashboardPage),
           },
           {
             path: 'dashboard',
@@ -37,23 +64,23 @@ export const router = createBrowserRouter([
           },
           {
             path: 'analyze',
-            element: <AnalyzePage />,
+            element: lazyElement(AnalyzePage),
           },
           {
             path: 'analyses/:id',
-            element: <ReportPage />,
+            element: lazyElement(ReportPage),
           },
           {
             path: 'history',
-            element: <HistoryPage />,
+            element: lazyElement(HistoryPage),
           },
           {
             path: 'library',
-            element: <LibraryPage />,
+            element: lazyElement(LibraryPage),
           },
           {
             path: 'intel',
-            element: <IntelPage />,
+            element: lazyElement(IntelPage),
           },
           {
             path: 'model',
@@ -61,7 +88,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'settings',
-            element: <SettingsPage />,
+            element: lazyElement(SettingsPage),
           },
         ],
       },

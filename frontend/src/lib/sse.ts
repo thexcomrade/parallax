@@ -5,6 +5,7 @@
  * We use fetch + ReadableStream to stream stage events securely.
  */
 
+import { API_BASE } from './api';
 import { authStore } from './auth-store';
 import type { StageEventPayload } from '../types/api';
 
@@ -31,7 +32,7 @@ export function subscribeToAnalysisEvents(
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/v1/analyses/${analysisId}/events`, {
+      const response = await fetch(`${API_BASE}/analyses/${analysisId}/events`, {
         headers,
         signal: controller.signal,
       });

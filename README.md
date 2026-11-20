@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PARALLAX — Multimodal Audio-Visual Deepfake Detection System
 
 [![Python Version](https://img.shields.io/badge/Python-3.12%20%7C%203.13-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
@@ -9,11 +8,6 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
 [![License](https://img.shields.io/badge/License-Proprietary-gray.svg?style=flat)]()
-=======
-# PARALLAX — Audio-Visual Deepfake Using AVT²-DWF
-
-> Working title. Multimodal deepfake detection web app: **Face Transformer + Audio Transformer + Dynamic Weight Fusion (AVT²-DWF)**, served through a FastAPI backend and a React bento-grid frontend with a full login system.
->>>>>>> 4e0fca5f1bdaec59fccae1dd964b6fca537449b8
 
 ---
 

@@ -20,7 +20,9 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    url = settings.DATABASE_URL
+    from app.db.session import normalize_database_url
+
+    url = normalize_database_url(settings.DATABASE_URL)
     if url.startswith("sqlite:///"):
         # Ensure parent directory exists for SQLite
         raw_path = url.replace("sqlite:///", "")

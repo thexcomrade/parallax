@@ -29,7 +29,7 @@ from app.services.sample_service import is_ssrf_safe_url
 
 
 def _create_user(db: Session, email: str, password: str = "P@ssw0rd2026!Complex") -> User:
-    return AuthService.register_user(db=db, email=email, password=password)
+    return AuthService.register_user(db=db, email=email, password=password, role="operator")
 
 
 def _seed_analysis(db: Session, user: User) -> Analysis:

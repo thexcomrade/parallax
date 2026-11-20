@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 temp_dir = tempfile.mkdtemp()
 test_db_path = Path(temp_dir) / "test_parallax.db"
 os.environ["APP_ENV"] = "development"
+os.environ["TESTING"] = "1"
 os.environ["SECRET_KEY"] = "test-secret-key-that-is-at-least-32-chars-long-for-testing"
 os.environ["DATABASE_URL"] = f"sqlite:///{test_db_path}"
 os.environ["STORAGE_DIR"] = str(Path(temp_dir) / "storage")
@@ -67,6 +68,7 @@ def test_user(db_session: Session) -> User:
         db=db_session,
         email="forensics_analyst@parallax.io",
         password="SecureMasterPassword2026!",
+        role="operator",
     )
     return user
 
@@ -74,10 +76,11 @@ def test_user(db_session: Session) -> User:
 @pytest.fixture(scope="session")
 def synthetic_video_with_audio() -> Path:
     """Generate a tiny 3-second test clip with sine tone and moving testsrc."""
-    import shutil
     import subprocess
 
-    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+    from app.ml.preprocess.audio import _get_ffmpeg_bin
+
+    ffmpeg_bin = _get_ffmpeg_bin()
     clip_path = Path(temp_dir) / "synthetic_av.mp4"
     if not clip_path.exists():
         cmd = [
@@ -107,10 +110,11 @@ def synthetic_video_with_audio() -> Path:
 @pytest.fixture(scope="session")
 def synthetic_video_no_audio() -> Path:
     """Generate a 3-second video clip with NO audio stream."""
-    import shutil
     import subprocess
 
-    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+    from app.ml.preprocess.audio import _get_ffmpeg_bin
+
+    ffmpeg_bin = _get_ffmpeg_bin()
     clip_path = Path(temp_dir) / "synthetic_no_audio.mp4"
     if not clip_path.exists():
         cmd = [

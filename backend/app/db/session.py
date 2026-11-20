@@ -7,22 +7,42 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import settings
 
-__all__ = ["Base", "SessionLocal", "engine", "get_db"]
+__all__ = ["Base", "SessionLocal", "engine", "get_db", "normalize_database_url"]
 
 
 class Base(DeclarativeBase):
     """Typed declarative base for all ORM models."""
 
 
-# Engine configuration
+def normalize_database_url(url: str) -> str:
+    """Normalize PostgreSQL URLs to ensure psycopg v3 driver is used with SQLAlchemy."""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+db_url = normalize_database_url(settings.DATABASE_URL)
 connect_args: dict[str, Any] = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+engine_kwargs: dict[str, Any] = {
+    "pool_pre_ping": True,
+}
+
+if db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+else:
+    # PostgreSQL pool configuration
+    engine_kwargs["pool_size"] = 20
+    engine_kwargs["max_overflow"] = 10
+    engine_kwargs["pool_recycle"] = 300
+    if settings.PGBOUNCER_MODE:
+        connect_args["prepare_threshold"] = None
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     connect_args=connect_args,
-    pool_pre_ping=True,
+    **engine_kwargs,
 )
 
 

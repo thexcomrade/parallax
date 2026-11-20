@@ -10,6 +10,14 @@ class UserRegister(BaseModel):
     )
 
 
+class UserRoleUpdate(BaseModel):
+    role: str = Field(
+        ...,
+        description="User role: 'public', 'operator', or 'admin'",
+        pattern="^(public|operator|admin)$",
+    )
+
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
@@ -20,6 +28,7 @@ class UserResponse(BaseModel):
 
     id: int
     email: EmailStr
+    role: str = "public"
     created_at: datetime
 
 
