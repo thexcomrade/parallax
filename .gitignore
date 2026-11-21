@@ -58,6 +58,13 @@ dist-ssr/
 /reports/phase3_visualizations/
 
 # ==========================================
+# SCRIPTS & GENERATED DOCUMENTATION
+# ==========================================
+/scripts/
+/docs/
+!/docs/design/
+
+# ==========================================
 # LOCAL DATASETS & USER STORAGE
 # ==========================================
 /datasets/*
