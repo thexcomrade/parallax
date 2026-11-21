@@ -1,0 +1,153 @@
+# PARALLAX — Public Demo Container Stack (Phase 7)
+# Runs entirely on Windows Host, exposing only Nginx on 127.0.0.1:8080 for Cloudflare Quick Tunnel.
+# Reuses existing staging database, redis, and persistent storage volumes without data recreation.
+
+services:
+  staging-postgres:
+    image: postgres:16-alpine
+    container_name: parallax-staging-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-parallax_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parallax_staging_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-parallax_staging}
+    volumes:
+      - parallax_staging_postgres_data:/var/lib/postgresql/data
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parallax_staging -d parallax_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  staging-redis:
+    image: redis:7-alpine
+    container_name: parallax-staging-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - parallax_staging_redis_data:/data
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  staging-api:
+    image: parallax-api:latest
+    container_name: parallax-staging-api
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - APP_ENV=staging
+      - PROCESS_ROLE=api
+      - SERVE_FRONTEND=false
+      - METRICS_ENABLED=true
+      - LOG_FORMAT=json
+      - MAX_UPLOAD_MB=90
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-parallax_staging}:${POSTGRES_PASSWORD:-parallax_staging_pass_2026}@staging-postgres:5432/${POSTGRES_DB:-parallax_staging}
+      - REDIS_URL=redis://staging-redis:6379/0
+      - STORAGE_DIR=/app/storage
+      - STORAGE_BACKEND=local
+    command: ["sh", "-c", "alembic -c backend/alembic.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend --workers ${API_WORKERS:-4}"]
+    depends_on:
+      staging-postgres:
+        condition: service_healthy
+      staging-redis:
+        condition: service_healthy
+    volumes:
+      - parallax_staging_storage:/app/storage
+      - ./backend/app:/app/backend/app:ro
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  staging-worker:
+    image: parallax-worker:latest
+    container_name: parallax-staging-worker
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - APP_ENV=staging
+      - PROCESS_ROLE=worker
+      - WORKER_MAX_CONCURRENCY=1
+      - REQUIRE_GPU=true
+      - INFERENCE_DEVICE=cuda:0
+      - LOG_FORMAT=json
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-parallax_staging}:${POSTGRES_PASSWORD:-parallax_staging_pass_2026}@staging-postgres:5432/${POSTGRES_DB:-parallax_staging}
+      - REDIS_URL=redis://staging-redis:6379/0
+      - STORAGE_DIR=/app/storage
+      - STORAGE_BACKEND=local
+    command: ["python", "-m", "app.workers.inference_worker"]
+    depends_on:
+      staging-postgres:
+        condition: service_healthy
+      staging-redis:
+        condition: service_healthy
+    volumes:
+      - parallax_staging_storage:/app/storage
+      - ./backend/app:/app/backend/app:ro
+    networks:
+      - parallax-staging-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.healthcheck"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+
+  demo-nginx:
+    image: nginx:alpine
+    container_name: parallax-demo-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./monitoring/nginx/nginx.demo.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+    depends_on:
+      staging-api:
+        condition: service_healthy
+    networks:
+      - parallax-staging-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/health/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  parallax-staging-network:
+    name: parallax-staging-network
+    external: true
+
+volumes:
+  parallax_staging_storage:
+    name: parallax_staging_storage
+    external: true
+  parallax_staging_postgres_data:
+    name: parallax_staging_postgres_data
+    external: true
+  parallax_staging_redis_data:
+    name: parallax_staging_redis_data
+    external: true
