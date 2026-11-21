@@ -11,7 +11,6 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
@@ -76,22 +75,32 @@ export const IntelPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto py-2">
-      {/* 1. Page Header */}
-      <PageHeader
-        title="Forensic Threat & Research Recon"
-        description="Multi-source synthetic threat tracking, peer-reviewed arXiv preprints, and developer community pulse."
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleRefreshAll}
-            loading={refreshing || isLoading}
-            icon={<RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />}
-          >
-            REFRESH RECON
-          </Button>
-        }
-      />
+      {/* 1. Page header — same specification as every other workspace page */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[var(--line)]">
+        <div>
+          <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--cobalt-300)]">
+            Intelligence
+          </span>
+          <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight mt-0.5">
+            Threat &amp; research recon
+          </h1>
+          <p className="text-[13px] text-[var(--text-300)] mt-1 leading-normal max-w-2xl">
+            Multi-source synthetic-threat tracking, peer-reviewed preprints and developer-community
+            pulse — read-only context, separate from PARALLAX verdicts.
+          </p>
+        </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleRefreshAll}
+          loading={refreshing || isLoading}
+          icon={<RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />}
+          className="self-start sm:self-auto shrink-0"
+        >
+          Refresh feeds
+        </Button>
+      </header>
 
       {/* 2. Security Provenance & External Disclaimer Strip */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
@@ -106,7 +115,7 @@ export const IntelPage: React.FC = () => {
               <strong className="text-[var(--text-100)]">PROVENANCE:</strong> Proxied server-side via restricted SSL. Zero browser cross-origin leaks.
             </span>
           </div>
-          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-[var(--surface-elevated)] text-[var(--lime-400)] text-[10px] uppercase font-bold shrink-0">
+          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-[var(--surface-elevated)] text-[var(--success-500)] text-[10px] uppercase font-bold shrink-0">
             ISOLATED
           </span>
         </aside>
@@ -373,7 +382,7 @@ export const IntelPage: React.FC = () => {
                   className="p-3.5 bg-[var(--surface-elevated)]/40 hover:bg-[var(--surface-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] rounded-[var(--radius-sm)] flex flex-col gap-2.5 transition-colors group"
                 >
                   <div className="flex items-center justify-between gap-2 text-[10px] font-mono">
-                    <span className="px-1.5 py-0.5 rounded bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--lime-400)] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--success-500)] font-bold">
                       ▲ {story.points} PTS
                     </span>
                     <span className="text-[var(--text-400)] flex items-center gap-1">

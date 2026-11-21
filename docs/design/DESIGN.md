@@ -8,9 +8,13 @@ There is zero decorative fluff. If an element does not carry signal, telemetry, 
 ---
 
 ## 2. Palette & Contrast Matrix
-The color system reflects strict signal hierarchy: **80% Midnight Black (canvas), 15% Electric Cobalt (structural/video), <=5% Acid Lime (signal/audio/alert-positive), with Alert Red reserved solely for malicious synthesis (FAKE).**
+The color system reflects strict signal hierarchy: **80% near-black canvas, 15% Electric Cobalt (structure, navigation, primary action), with semantic states kept to four roles: emerald `AUTHENTIC`, coral `FAKE`, amber `INCONCLUSIVE / untrained`, cyan acoustic channel.** Colour never carries a state on its own — every state also has a label and/or icon.
+
+> Revised in the 1.2 frontend pass. The ad-hoc second palette that had grown across the pages (`#648CFF`, `#91A0B8`, `#E8EDF5`, `#F16F78`, …) has been removed; `frontend/src/styles/tokens.css` is now the only colour source. Acid lime is retired as an action colour and the primary button is Cobalt.
 
 ### 2.1 CSS Custom Properties (`tokens.css`)
+
+> The snippet below documents the original dark scale. It is superseded by the semantic layer in `frontend/src/styles/tokens.css` (`--surface-*`, `--line-*`, `--text-*`, `--cobalt-*`, `--success-*`, `--warning-*`, `--alert-*`, `--space-*`, `--motion-*`). Components must consume those tokens; raw hex values are not permitted in component code.
 ```css
 :root {
   /* Surface Scale (80% Total Surface) */
@@ -139,13 +143,13 @@ The following design tropes are strictly forbidden in PARALLAX:
 
 Components must strictly consume CSS tokens defined in `tokens.css`.
 - **Button**:
-  - `primary`: Background `var(--lime-400)`, text `var(--lime-ink)`, hover `var(--lime-300)`, focus `var(--cobalt-500)`.
+  - `primary`: Background `var(--cobalt-500)`, text `var(--text-100)`, hover `var(--cobalt-400)`, active `var(--cobalt-600)`, focus `var(--cobalt-400)`.
   - `secondary`: Hairline border `var(--line-strong)`, background `var(--black-800)`, text `var(--text-100)`.
   - `ghost`: Transparent, text `var(--text-300)`, hover `var(--black-800)`.
 - **Field**:
   - Background `var(--black-800)`, border `var(--line)`, focus border `var(--cobalt-500)`, mono hint in `var(--text-500)`.
 - **Badge**:
-  - `authentic`: Acid lime fill `rgba(200, 255, 46, 0.15)`, text `var(--lime-400)`, border `var(--lime-400)`.
+  - `authentic`: Emerald fill `rgba(53, 201, 154, 0.15)`, text `var(--success-500)`, border `var(--success-500)`.
   - `fake`: Alert red fill `var(--alert-bg)`, text `var(--alert-500)`, border `var(--alert-500)`, hazard-stripe texture.
   - `inconclusive`: Cobalt-300 fill `rgba(139, 163, 255, 0.12)`, text `var(--cobalt-300)`, border `var(--cobalt-400)`.
 
@@ -166,7 +170,7 @@ Components must strictly consume CSS tokens defined in `tokens.css`.
 ### 8.2 Distinct Modality Channel Tokens
 - **Visual / Video Channel**: Cobalt / Electric Blue (`--color-ch-visual: #3B82F6; --ch-visual: #3B82F6;`).
 - **Audio / Acoustic Channel**: Cyan (`--color-ch-audio: #06B6D4; --ch-audio: #06B6D4;`).
-- **Action / Success**: Acid Lime (`--color-lime-400: #C8FF2E;`), used sparingly for primary CTA and verified/success state.
+- **Action / Success**: Cobalt for primary actions, Emerald (`--success-500: #35C99A`) for verified/success states. Lime is no longer used in the interface.
 - **Threat / Discrepancy**: Alert Red (`--color-alert-500: #FF4D5E;`).
 - **Warning / Pending**: Amber (`--color-warning: #F59E0B;`).
 

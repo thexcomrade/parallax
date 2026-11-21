@@ -11,6 +11,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
+import anyio.to_thread
 from fastapi import (
     APIRouter,
     Depends,
@@ -67,14 +68,29 @@ async def create_analysis(
     db: Session = Depends(get_db),
 ) -> AnalysisCreated:
     """Upload media file, validate container and decodability, and start analysis."""
+    # 1. Enforce queue capacity & per-tenant backpressure before processing file (Workstream C)
+    await job_runner.check_admission_capacity(user_id=current_user.id)
+
     analysis_id = str(uuid.uuid4())
-    # Process and validate the upload stream with pre-assigned analysis identifier
-    upload_meta = process_upload_stream(
-        stream=file.file,
-        filename=file.filename or "upload.mp4",
-        content_length=content_length,
-        file_id=analysis_id,
+    # 2. Process and validate the upload stream off the async event loop (Workstream A)
+    upload_meta = await anyio.to_thread.run_sync(
+        process_upload_stream,
+        file.file,
+        file.filename or "upload.mp4",
+        content_length,
+        analysis_id,
     )
+
+    # 3. Prevent duplicate submission of identical SHA-256 within 60 seconds (Workstream C)
+    lock_ok = await job_runner.check_and_acquire_upload_lock(current_user.id, upload_meta.sha256)
+    if not lock_ok:
+        raise ConflictException(
+            code="UPLOAD_IN_PROGRESS",
+            message=(
+                "An identical file analysis is already in progress. "
+                "Please wait for completion."
+            ),
+        )
 
     # Persist database record and enqueue job
     analysis = await AnalysisService.create_analysis(
@@ -146,6 +162,9 @@ async def finalize_upload(
     db: Session = Depends(get_db),
 ) -> AnalysisCreated:
     """Verify uploaded object in storage, inspect decodability, and enqueue analysis."""
+    # 0. Enforce queue capacity & per-tenant backpressure (Workstream C)
+    await job_runner.check_admission_capacity(user_id=current_user.id)
+
     storage = get_storage_service()
 
     # 1. Verify object exists in storage
@@ -292,19 +311,36 @@ def get_analysis(
 @router.get("/{id}/events")
 async def stream_analysis_events(
     request: Request,
-    analysis: Analysis = Depends(get_owned_analysis),
+    id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     last_event_id_header: str | None = Header(None, alias="Last-Event-ID"),
     last_event_id: str | None = None,
 ) -> StreamingResponse:
     """Stream SSE stage events live during analysis execution.
 
-    Supports Redis Streams durable replay and reconnection with Last-Event-ID.
+    Releases database connection immediately after ownership verification
+    to prevent holding pool connections during long-lived SSE streams (Workstream B).
     """
+    try:
+        analysis = db.execute(
+            select(Analysis).where(
+                Analysis.id == id,
+                Analysis.user_id == current_user.id,
+            )
+        ).scalar_one_or_none()
+        if not analysis:
+            raise NotFoundException("Analysis not found")
+        init_status = analysis.status
+        init_error = analysis.error
+    finally:
+        db.close()
+
     effective_last_id = last_event_id_header or last_event_id
 
     async def event_generator() -> AsyncGenerator[str, None]:
         # If already completed or failed, emit terminal event immediately
-        if analysis.status == "completed":
+        if init_status == "completed":
             terminal = {
                 "stage": "done",
                 "progress": 1.0,
@@ -313,11 +349,11 @@ async def stream_analysis_events(
             }
             yield f"id: terminal\ndata: {json.dumps(terminal)}\n\n"
             return
-        elif analysis.status == "failed":
+        elif init_status == "failed":
             terminal = {
                 "stage": "error",
                 "progress": 1.0,
-                "message": analysis.error or "Analysis failed",
+                "message": init_error or "Analysis failed",
                 "elapsed_s": 0.0,
             }
             yield f"id: terminal\ndata: {json.dumps(terminal)}\n\n"
@@ -326,7 +362,7 @@ async def stream_analysis_events(
         # Stream from durable Redis event stream
         has_yielded = False
         async for msg_id, payload in job_runner.stream_events(
-            analysis.id, last_event_id=effective_last_id
+            id, last_event_id=effective_last_id
         ):
             has_yielded = True
             yield f"id: {msg_id}\ndata: {payload.model_dump_json()}\n\n"
@@ -334,7 +370,7 @@ async def stream_analysis_events(
         # Fallback to local in-memory subscriber if Redis yielded no events
         # and analysis is still processing
         if not has_yielded:
-            queue = job_runner.subscribe(analysis.id)
+            queue = job_runner.subscribe(id)
             try:
                 while True:
                     event = await queue.get()
@@ -342,7 +378,7 @@ async def stream_analysis_events(
                         break
                     yield f"data: {event.model_dump_json()}\n\n"
             finally:
-                job_runner.unsubscribe(analysis.id, queue)
+                job_runner.unsubscribe(id, queue)
 
     return StreamingResponse(
         event_generator(),

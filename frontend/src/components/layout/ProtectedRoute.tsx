@@ -9,7 +9,7 @@ export const ProtectedRoute: React.FC = () => {
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-[var(--black-950)] flex flex-col items-center justify-center gap-3 text-[var(--text-300)] select-none">
-        <div className="w-8 h-8 border-2 border-[var(--cobalt-500)] border-t-[var(--lime-400)] rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[var(--cobalt-500)] border-t-[var(--success-500)] rounded-full animate-spin" />
         <div className="font-mono text-xs uppercase tracking-widest text-[var(--text-500)]">
           // SYNCHRONIZING SECURE SESSION
         </div>

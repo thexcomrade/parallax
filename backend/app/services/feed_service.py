@@ -28,6 +28,22 @@ USER_AGENT = (
 )
 DEFAULT_TIMEOUT = 8.0
 
+_HTTP_LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10, keepalive_expiry=30.0)
+_shared_client: httpx.Client | None = None
+
+
+def get_shared_client() -> httpx.Client:
+    """Return a pooled, reusable HTTP client for outbound feeds."""
+    global _shared_client
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client = httpx.Client(
+            headers={"User-Agent": USER_AGENT},
+            verify=certifi.where(),
+            timeout=DEFAULT_TIMEOUT,
+            limits=_HTTP_LIMITS,
+        )
+    return _shared_client
+
 FALLBACK_THREATS: list[dict[str, Any]] = [
     {
         "title": "US Homeland Security issues guidance on combatting weaponized deepfakes",
@@ -82,7 +98,7 @@ FALLBACK_RESEARCH: list[dict[str, Any]] = [
         "authors": ["K. V. Ramakrishnan", "E. J. Delp"],
         "summary": (
             "An empirical benchmark of biometric video detectors evaluated across DFDC, "
-            "FaceForensics++, and FakeAVCeleb datasets."
+            "FaceForensics++, and public deepfake forensics benchmarks."
         ),
         "url": "https://arxiv.org/abs/2404.09887",
         "published_at": "2026-10-25T14:22:10Z",
@@ -165,42 +181,38 @@ def get_threats_feed(db: Session, force_refresh: bool = False) -> ThreatFeedResp
     # Attempt upstream fetch
     url = "https://api.gdeltproject.org/api/v2/doc/doc?query=deepfake&mode=artlist&format=json&maxrecords=20"
     try:
-        with httpx.Client(
-            headers={"User-Agent": USER_AGENT},
-            verify=certifi.where(),
-            timeout=DEFAULT_TIMEOUT,
-        ) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                data = resp.json()
-                raw_articles = data.get("articles", [])
-                items_data: list[dict[str, Any]] = []
-                for art in raw_articles:
-                    title = (art.get("title") or "").strip()
-                    art_url = (art.get("url") or "").strip()
-                    if title and art_url:
-                        items_data.append(
-                            {
-                                "title": title,
-                                "url": art_url,
-                                "domain": art.get("domain"),
-                                "seendate": art.get("seendate"),
-                                "socialimage": art.get("socialimage"),
-                                "language": art.get("language"),
-                                "sourcecountry": art.get("sourcecountry"),
-                            }
-                        )
-                if items_data:
-                    now = _set_cache(
-                        db,
-                        cache_key,
-                        {"items": items_data},
-                        settings.FEED_CACHE_TTL_S,
+        client = get_shared_client()
+        resp = client.get(url)
+        if resp.status_code == 200:
+            data = resp.json()
+            raw_articles = data.get("articles", [])
+            items_data: list[dict[str, Any]] = []
+            for art in raw_articles:
+                title = (art.get("title") or "").strip()
+                art_url = (art.get("url") or "").strip()
+                if title and art_url:
+                    items_data.append(
+                        {
+                            "title": title,
+                            "url": art_url,
+                            "domain": art.get("domain"),
+                            "seendate": art.get("seendate"),
+                            "socialimage": art.get("socialimage"),
+                            "language": art.get("language"),
+                            "sourcecountry": art.get("sourcecountry"),
+                        }
                     )
-                    items = [ThreatFeedItem(**item) for item in items_data]
-                    return ThreatFeedResponse(items=items, cached_at=now)
-            else:
-                logger.warning(f"GDELT returned HTTP {resp.status_code}")
+            if items_data:
+                now = _set_cache(
+                    db,
+                    cache_key,
+                    {"items": items_data},
+                    settings.FEED_CACHE_TTL_S,
+                )
+                items = [ThreatFeedItem(**item) for item in items_data]
+                return ThreatFeedResponse(items=items, cached_at=now)
+        else:
+            logger.warning(f"GDELT returned HTTP {resp.status_code}")
     except Exception as e:
         logger.warning(f"Upstream GDELT fetch error: {e}")
 
@@ -224,64 +236,60 @@ def get_research_feed(db: Session, force_refresh: bool = False) -> ResearchFeedR
 
     url = "https://export.arxiv.org/api/query?search_query=all:deepfake&sortBy=submittedDate&sortOrder=descending&max_results=20"
     try:
-        with httpx.Client(
-            headers={"User-Agent": USER_AGENT},
-            verify=certifi.where(),
-            timeout=DEFAULT_TIMEOUT,
-        ) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                root = ET.fromstring(resp.text)
-                ns = {"atom": "http://www.w3.org/2005/Atom"}
-                entries = root.findall("atom:entry", ns)
-                items_data: list[dict[str, Any]] = []
-                for entry in entries:
-                    raw_id = entry.find("atom:id", ns)
-                    raw_title = entry.find("atom:title", ns)
-                    raw_summary = entry.find("atom:summary", ns)
-                    raw_pub = entry.find("atom:published", ns)
-                    if raw_id is None or raw_title is None:
-                        continue
-                    paper_id = raw_id.text.strip().split("/abs/")[-1] if raw_id.text else ""
-                    title = " ".join(raw_title.text.strip().split()) if raw_title.text else ""
-                    summary = (
-                        " ".join((raw_summary.text or "").strip().split())
-                        if raw_summary is not None
-                        else ""
-                    )
-                    published_at = (
-                        raw_pub.text.strip() if raw_pub is not None and raw_pub.text else ""
-                    )
-                    authors = []
-                    for author_el in entry.findall("atom:author", ns):
-                        name_el = author_el.find("atom:name", ns)
-                        if name_el is not None and name_el.text:
-                            authors.append(name_el.text.strip())
+        client = get_shared_client()
+        resp = client.get(url)
+        if resp.status_code == 200:
+            root = ET.fromstring(resp.text)
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            entries = root.findall("atom:entry", ns)
+            items_data: list[dict[str, Any]] = []
+            for entry in entries:
+                raw_id = entry.find("atom:id", ns)
+                raw_title = entry.find("atom:title", ns)
+                raw_summary = entry.find("atom:summary", ns)
+                raw_pub = entry.find("atom:published", ns)
+                if raw_id is None or raw_title is None:
+                    continue
+                paper_id = raw_id.text.strip().split("/abs/")[-1] if raw_id.text else ""
+                title = " ".join(raw_title.text.strip().split()) if raw_title.text else ""
+                summary = (
+                    " ".join((raw_summary.text or "").strip().split())
+                    if raw_summary is not None
+                    else ""
+                )
+                published_at = (
+                    raw_pub.text.strip() if raw_pub is not None and raw_pub.text else ""
+                )
+                authors = []
+                for author_el in entry.findall("atom:author", ns):
+                    name_el = author_el.find("atom:name", ns)
+                    if name_el is not None and name_el.text:
+                        authors.append(name_el.text.strip())
 
-                    paper_url = (
-                        f"https://arxiv.org/abs/{paper_id}" if paper_id else "https://arxiv.org"
-                    )
-                    items_data.append(
-                        {
-                            "arxiv_id": paper_id,
-                            "title": title,
-                            "authors": authors[:5],
-                            "summary": summary[:400] + ("..." if len(summary) > 400 else ""),
-                            "url": paper_url,
-                            "published_at": published_at,
-                        }
-                    )
-                if items_data:
-                    now = _set_cache(
-                        db,
-                        cache_key,
-                        {"items": items_data},
-                        settings.FEED_CACHE_TTL_S,
-                    )
-                    items = [ResearchPaperItem(**item) for item in items_data]
-                    return ResearchFeedResponse(items=items, cached_at=now)
-            else:
-                logger.warning(f"arXiv returned HTTP {resp.status_code}")
+                paper_url = (
+                    f"https://arxiv.org/abs/{paper_id}" if paper_id else "https://arxiv.org"
+                )
+                items_data.append(
+                    {
+                        "arxiv_id": paper_id,
+                        "title": title,
+                        "authors": authors[:5],
+                        "summary": summary[:400] + ("..." if len(summary) > 400 else ""),
+                        "url": paper_url,
+                        "published_at": published_at,
+                    }
+                )
+            if items_data:
+                now = _set_cache(
+                    db,
+                    cache_key,
+                    {"items": items_data},
+                    settings.FEED_CACHE_TTL_S,
+                )
+                items = [ResearchPaperItem(**item) for item in items_data]
+                return ResearchFeedResponse(items=items, cached_at=now)
+        else:
+            logger.warning(f"arXiv returned HTTP {resp.status_code}")
     except Exception as e:
         logger.warning(f"Upstream arXiv fetch error: {e}")
 
@@ -303,44 +311,40 @@ def get_pulse_feed(db: Session, force_refresh: bool = False) -> PulseFeedRespons
 
     url = "https://hn.algolia.com/api/v1/search_by_date?query=deepfake&tags=story&hitsPerPage=20"
     try:
-        with httpx.Client(
-            headers={"User-Agent": USER_AGENT},
-            verify=certifi.where(),
-            timeout=DEFAULT_TIMEOUT,
-        ) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                data = resp.json()
-                hits = data.get("hits", [])
-                items_data: list[dict[str, Any]] = []
-                for h in hits:
-                    obj_id = str(h.get("objectID") or "")
-                    title = (h.get("title") or "").strip()
-                    if not obj_id or not title:
-                        continue
-                    item_url = h.get("url") or f"https://news.ycombinator.com/item?id={obj_id}"
-                    items_data.append(
-                        {
-                            "object_id": obj_id,
-                            "title": title,
-                            "url": item_url,
-                            "author": h.get("author") or "anonymous",
-                            "points": int(h.get("points") or 0),
-                            "num_comments": int(h.get("num_comments") or 0),
-                            "created_at": h.get("created_at") or "",
-                        }
-                    )
-                if items_data:
-                    now = _set_cache(
-                        db,
-                        cache_key,
-                        {"items": items_data},
-                        settings.FEED_CACHE_TTL_S,
-                    )
-                    items = [PulseFeedItem(**item) for item in items_data]
-                    return PulseFeedResponse(items=items, cached_at=now)
-            else:
-                logger.warning(f"HN Algolia returned HTTP {resp.status_code}")
+        client = get_shared_client()
+        resp = client.get(url)
+        if resp.status_code == 200:
+            data = resp.json()
+            hits = data.get("hits", [])
+            items_data: list[dict[str, Any]] = []
+            for h in hits:
+                obj_id = str(h.get("objectID") or "")
+                title = (h.get("title") or "").strip()
+                if not obj_id or not title:
+                    continue
+                item_url = h.get("url") or f"https://news.ycombinator.com/item?id={obj_id}"
+                items_data.append(
+                    {
+                        "object_id": obj_id,
+                        "title": title,
+                        "url": item_url,
+                        "author": h.get("author") or "anonymous",
+                        "points": int(h.get("points") or 0),
+                        "num_comments": int(h.get("num_comments") or 0),
+                        "created_at": h.get("created_at") or "",
+                    }
+                )
+            if items_data:
+                now = _set_cache(
+                    db,
+                    cache_key,
+                    {"items": items_data},
+                    settings.FEED_CACHE_TTL_S,
+                )
+                items = [PulseFeedItem(**item) for item in items_data]
+                return PulseFeedResponse(items=items, cached_at=now)
+        else:
+            logger.warning(f"HN Algolia returned HTTP {resp.status_code}")
     except Exception as e:
         logger.warning(f"Upstream HN Algolia fetch error: {e}")
 

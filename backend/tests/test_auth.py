@@ -240,6 +240,56 @@ def test_change_password_and_verify_new_login(client: TestClient, test_user: Use
     assert success_res.status_code == 200
 
 
+def test_change_password_rejects_identical_password(client: TestClient, test_user: User) -> None:
+    # 1. Login
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": test_user.email, "password": "SecureMasterPassword2026!"},
+    )
+    assert login_res.status_code == 200
+    access_token = login_res.json()["access_token"]
+    old_cookie = login_res.cookies.get("refresh_token")
+
+    # 2. Attempt to reuse identical password -> 400 PASSWORD_REUSE
+    reuse_res = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "SecureMasterPassword2026!",
+            "new_password": "SecureMasterPassword2026!",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert reuse_res.status_code == 400
+    assert reuse_res.json()["code"] == "PASSWORD_REUSE"
+
+    # 3. Attempt with wrong current password -> 401
+    wrong_curr = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "WrongPassword12345!",
+            "new_password": "BrandNewSecret2026!#",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert wrong_curr.status_code == 401
+
+    # 4. Legitimate change succeeds, invalidating previous refresh tokens
+    legit_res = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "SecureMasterPassword2026!",
+            "new_password": "BrandNewSecret2026!#",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert legit_res.status_code == 200
+
+    # 5. Using the old pre-change refresh token now fails (401)
+    if old_cookie:
+        stale_refresh = client.post("/api/v1/auth/refresh", cookies={"refresh_token": old_cookie})
+        assert stale_refresh.status_code == 401
+
+
 def test_delete_account(client: TestClient, test_user: User) -> None:
     # 1. Login
     login_res = client.post(

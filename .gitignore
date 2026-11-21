@@ -1,13 +1,18 @@
-```gitignore
-# Environment & Secrets
+# ==========================================
+# ENVIRONMENT & SECRETS
+# ==========================================
 .env
 .env.*
 *.env
 !.env.example
+!.env.demo.example
 
-# Python
+# ==========================================
+# PYTHON & BUILD CACHES
+# ==========================================
 __pycache__/
 *.py[cod]
+*$py.class
 *.so
 .venv/
 venv/
@@ -15,8 +20,11 @@ env/
 build/
 dist/
 *.egg-info/
+.eggs/
 
-# Testing & Linting
+# ==========================================
+# TESTING, LINTING & SCREENSHOTS
+# ==========================================
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -26,48 +34,107 @@ test-results/
 playwright-report/
 blob-report/
 
-# Node & Frontend
+# ==========================================
+# NODE & FRONTEND
+# ==========================================
 node_modules/
 frontend/dist/
 dist-ssr/
 *.local
 .npm/
+*.tsbuildinfo
 
-# Data & Storage
-/datasets/
+# ==========================================
+# EXPERIMENTS & INTERMEDIATE RUNS
+# ==========================================
+/experiments/
+
+# ==========================================
+# GENERATED AUDIT REPORTS & DIAGNOSTIC DUMPS
+# ==========================================
+/reports/*.json
+/reports/*.csv
+/reports/*.png
+/reports/phase3_visualizations/
+
+# ==========================================
+# LOCAL DATASETS & USER STORAGE
+# ==========================================
+/datasets/*
+!/datasets/manifests/
+/datasets/manifests/*
+!/datasets/manifests/phase5_locked_test.csv
+!/datasets/manifests/.gitkeep
 /storage/
+/backend/storage/
+backend/storage/
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
 
-# Generated Reports & Experiments
-/reports/
-/experiments/
-/docs/
-/backup/
+# ==========================================
+# BACKUPS & RECOVERY ARCHIVES
+# ==========================================
 /backups/
+/backup/
 /archives/
 /archive/
+*.tar.gz
+*.tgz
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+*.bak
+*.backup
+*.dump
 
-# Model Weights & Checkpoints
+# ==========================================
+# MODEL CHECKPOINTS & LARGE BINARIES
+# ==========================================
 /checkpoints/
 *.pt
 *.pth
 *.ckpt
 *.safetensors
 *.onnx
+
 /backend/app/ml/weights/*
 !/backend/app/ml/weights/.gitkeep
 !/backend/app/ml/weights/model_card.json
 
-# OS & Editor
+# ==========================================
+# RAW MEDIA FILES (VIDEOS & AUDIO)
+# ==========================================
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.flv
+*.wmv
+*.wav
+*.mp3
+!backend/tests/fixtures/*.mp4
+!frontend/tests/fixtures/*.mp4
+!loadtests/fixtures/*.mp4
+
+# ==========================================
+# OS, EDITOR & TOOL ARTIFACTS
+# ==========================================
 .DS_Store
 Thumbs.db
+desktop.ini
 .vscode/
 .idea/
+.freebuff/
 
-# Generated TypeScript cache
-*.tsbuildinfo
-
-# Dataset manifests
-/datasets/manifests/
+# ==========================================
+# BINARIES & TUNNEL EXECUTABLES
+# ==========================================
+bin/
+*.exe

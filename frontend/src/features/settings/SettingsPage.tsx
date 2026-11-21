@@ -2,7 +2,7 @@
  * SettingsPage — Operator Credentials, Active Cryptographic Sessions & Privacy Lifecycle.
  *
  * Implements Phase 13/15: PARALLAX SETTINGS PAGE REDESIGN
- * - Modern dark SaaS settings workspace (#090D14 / #111927 / #171F2D / #253247)
+ * - Modern dark SaaS settings workspace (var(--surface-base) / var(--black-950) / var(--black-900) / var(--line))
  * - 2-column desktop layout (Left navigation ~210px + Right content panel)
  * - Mobile responsive horizontal tab/pill navigation bar
  * - Operator Identity & authenticated profile telemetry (zero third-party CDN leaks)
@@ -133,7 +133,7 @@ export const SettingsPage: React.FC = () => {
     : 'OP';
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto py-1 sm:py-2 text-[#E8EDF5]">
+    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto py-1 sm:py-2 text-[var(--text-100)]">
       {/* Toast Alert */}
       {toastMsg && (
         <Toast
@@ -144,15 +144,15 @@ export const SettingsPage: React.FC = () => {
       )}
 
       {/* ── 1. Page Header (Matches Dashboard, History & Library) ──────────── */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#253247]/60">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[var(--line)]/60">
         <div>
-          <span className="text-[11px] font-semibold tracking-wider text-[#648CFF] uppercase block">
+          <span className="text-[11px] font-semibold tracking-wider text-[var(--cobalt-300)] uppercase block">
             PREFERENCES
           </span>
-          <h1 className="text-2xl sm:text-[28px] font-semibold text-[#E8EDF5] tracking-tight mt-0.5">
+          <h1 className="text-2xl sm:text-[28px] font-semibold text-[var(--text-100)] tracking-tight mt-0.5">
             Settings <span className="sr-only">Analyst Account & Security</span>
           </h1>
-          <p className="text-[13px] sm:text-sm text-[#91A0B8] mt-1 leading-normal">
+          <p className="text-[13px] sm:text-sm text-[var(--text-300)] mt-1 leading-normal">
             Manage your account and application preferences.
           </p>
         </div>
@@ -162,15 +162,15 @@ export const SettingsPage: React.FC = () => {
       <nav
         aria-label="Settings mobile navigation"
         tabIndex={0}
-        className="flex md:hidden items-center gap-1.5 p-1 bg-[#111927] border border-[#253247] rounded-xl overflow-x-auto w-full text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[#648CFF]"
+        className="flex md:hidden items-center gap-1.5 p-1 bg-[var(--black-950)] border border-[var(--line)] rounded-xl overflow-x-auto w-full text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--cobalt-300)]"
       >
         <button
           type="button"
           onClick={() => scrollToSection('account')}
           className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
             activeSection === 'account'
-              ? 'bg-[#1C2737] text-white border border-[#253247]'
-              : 'text-[#91A0B8] hover:text-[#E8EDF5]'
+              ? 'bg-[var(--black-700)] text-[var(--text-100)] border border-[var(--line)]'
+              : 'text-[var(--text-300)] hover:text-[var(--text-100)]'
           }`}
         >
           Account
@@ -180,8 +180,8 @@ export const SettingsPage: React.FC = () => {
           onClick={() => scrollToSection('security')}
           className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
             activeSection === 'security'
-              ? 'bg-[#1C2737] text-white border border-[#253247]'
-              : 'text-[#91A0B8] hover:text-[#E8EDF5]'
+              ? 'bg-[var(--black-700)] text-[var(--text-100)] border border-[var(--line)]'
+              : 'text-[var(--text-300)] hover:text-[var(--text-100)]'
           }`}
         >
           Password
@@ -191,8 +191,8 @@ export const SettingsPage: React.FC = () => {
           onClick={() => scrollToSection('sessions')}
           className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
             activeSection === 'sessions'
-              ? 'bg-[#1C2737] text-white border border-[#253247]'
-              : 'text-[#91A0B8] hover:text-[#E8EDF5]'
+              ? 'bg-[var(--black-700)] text-[var(--text-100)] border border-[var(--line)]'
+              : 'text-[var(--text-300)] hover:text-[var(--text-100)]'
           }`}
         >
           Sessions
@@ -202,8 +202,8 @@ export const SettingsPage: React.FC = () => {
           onClick={() => scrollToSection('danger')}
           className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
             activeSection === 'danger'
-              ? 'bg-red-500/15 text-red-300 border border-red-500/30'
-              : 'text-red-400 hover:text-red-300'
+              ? 'bg-[var(--alert-bg)] text-[var(--alert-400)] border border-[var(--alert-500)]/30'
+              : 'text-[var(--alert-400)] hover:text-[var(--alert-400)]'
           }`}
         >
           Danger Zone
@@ -215,18 +215,18 @@ export const SettingsPage: React.FC = () => {
         {/* Left Sidebar Navigation (Desktop) */}
         <nav
           aria-label="Settings navigation"
-          className="w-[210px] shrink-0 hidden md:flex flex-col gap-1 sticky top-6 self-start p-1.5 bg-[#111927] border border-[#253247] rounded-xl"
+          className="w-[210px] shrink-0 hidden md:flex flex-col gap-1 sticky top-6 self-start p-1.5 bg-[var(--black-950)] border border-[var(--line)] rounded-xl"
         >
           <button
             type="button"
             onClick={() => scrollToSection('account')}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2.5 text-left cursor-pointer ${
               activeSection === 'account'
-                ? 'bg-[#1C2737] text-white border border-[#253247] shadow-xs'
-                : 'text-[#91A0B8] hover:text-[#E8EDF5] hover:bg-[#171F2D]/50'
+                ? 'bg-[var(--black-700)] text-[var(--text-100)] border border-[var(--line)] shadow-xs'
+                : 'text-[var(--text-300)] hover:text-[var(--text-100)] hover:bg-[var(--black-900)]/50'
             }`}
           >
-            <User className="w-4 h-4 text-[#648CFF]" />
+            <User className="w-4 h-4 text-[var(--cobalt-300)]" />
             <span>Account</span>
           </button>
           <button
@@ -234,11 +234,11 @@ export const SettingsPage: React.FC = () => {
             onClick={() => scrollToSection('security')}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2.5 text-left cursor-pointer ${
               activeSection === 'security'
-                ? 'bg-[#1C2737] text-white border border-[#253247] shadow-xs'
-                : 'text-[#91A0B8] hover:text-[#E8EDF5] hover:bg-[#171F2D]/50'
+                ? 'bg-[var(--black-700)] text-[var(--text-100)] border border-[var(--line)] shadow-xs'
+                : 'text-[var(--text-300)] hover:text-[var(--text-100)] hover:bg-[var(--black-900)]/50'
             }`}
           >
-            <KeyRound className="w-4 h-4 text-[#648CFF]" />
+            <KeyRound className="w-4 h-4 text-[var(--cobalt-300)]" />
             <span>Password</span>
           </button>
           <button
@@ -246,11 +246,11 @@ export const SettingsPage: React.FC = () => {
             onClick={() => scrollToSection('sessions')}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2.5 text-left cursor-pointer ${
               activeSection === 'sessions'
-                ? 'bg-[#1C2737] text-white border border-[#253247] shadow-xs'
-                : 'text-[#91A0B8] hover:text-[#E8EDF5] hover:bg-[#171F2D]/50'
+                ? 'bg-[var(--black-700)] text-[var(--text-100)] border border-[var(--line)] shadow-xs'
+                : 'text-[var(--text-300)] hover:text-[var(--text-100)] hover:bg-[var(--black-900)]/50'
             }`}
           >
-            <Fingerprint className="w-4 h-4 text-[#648CFF]" />
+            <Fingerprint className="w-4 h-4 text-[var(--cobalt-300)]" />
             <span>Active Sessions</span>
           </button>
           <button
@@ -258,11 +258,11 @@ export const SettingsPage: React.FC = () => {
             onClick={() => scrollToSection('danger')}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2.5 text-left cursor-pointer ${
               activeSection === 'danger'
-                ? 'bg-red-500/15 text-red-300 border border-red-500/30 shadow-xs'
-                : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                ? 'bg-[var(--alert-bg)] text-[var(--alert-400)] border border-[var(--alert-500)]/30 shadow-xs'
+                : 'text-[var(--alert-400)] hover:text-[var(--alert-400)] hover:bg-[var(--alert-bg)]'
             }`}
           >
-            <AlertTriangle className="w-4 h-4 text-[#F16F78]" />
+            <AlertTriangle className="w-4 h-4 text-[var(--alert-500)]" />
             <span>Danger Zone</span>
           </button>
         </nav>
@@ -273,44 +273,44 @@ export const SettingsPage: React.FC = () => {
           <section
             id="account"
             aria-labelledby="operator-identity-heading"
-            className="rounded-[14px] bg-[#171F2D] border border-[#253247] p-5 sm:p-6 flex flex-col gap-5 scroll-mt-6 shadow-xs"
+            className="rounded-[14px] bg-[var(--black-900)] border border-[var(--line)] p-5 sm:p-6 flex flex-col gap-5 scroll-mt-6 shadow-xs"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#253247]/60">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#1C2737] border border-[#253247] flex items-center justify-center text-[#648CFF]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--black-700)] border border-[var(--line)] flex items-center justify-center text-[var(--cobalt-300)]">
                   <User className="w-4 h-4" />
                 </div>
                 <div>
                   <h2
                     id="operator-identity-heading"
-                    className="text-base font-semibold text-[#E8EDF5]"
+                    className="text-base font-semibold text-[var(--text-100)]"
                   >
                     Operator Identity
                   </h2>
-                  <p className="text-xs text-[#91A0B8] mt-0.5">
+                  <p className="text-xs text-[var(--text-300)] mt-0.5">
                     Authenticated analyst profile and workspace parameters.
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#35C99A]/10 text-[#35C99A] border border-[#35C99A]/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--success-500)]/10 text-[var(--success-500)] border border-[var(--success-500)]/20">
                 Session Active
               </span>
             </div>
 
             {/* Profile Row */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#111927] border border-[#253247]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[var(--black-950)] border border-[var(--line)]">
               <div className="flex items-center gap-3.5">
                 <div
-                  className="w-11 h-11 rounded-full bg-[#1C2737] border-2 border-[#648CFF]/60 flex items-center justify-center font-bold text-sm text-[#648CFF] select-none shrink-0"
+                  className="w-11 h-11 rounded-full bg-[var(--black-700)] border-2 border-[var(--cobalt-300)]/60 flex items-center justify-center font-bold text-sm text-[var(--cobalt-300)] select-none shrink-0"
                   aria-label={`Avatar for operator ${user?.email || 'analyst'}`}
                 >
                   {emailInitials}
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-[#E8EDF5]">
+                  <span className="text-sm font-semibold text-[var(--text-100)]">
                     {user?.email || 'analyst@parallax.io'}
                   </span>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#91A0B8] mt-0.5">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-300)] mt-0.5">
                     <span>Analyst ID: #{user?.id || 1}</span>
                     <span>•</span>
                     <span>
@@ -320,28 +320,28 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              <span className="px-2.5 py-1 rounded-md bg-[#171F2D] border border-[#253247] text-xs font-medium text-[#91A0B8]">
+              <span className="px-2.5 py-1 rounded-md bg-[var(--black-900)] border border-[var(--line)] text-xs font-medium text-[var(--text-300)]">
                 Full Multi-Modal Access
               </span>
             </div>
 
             {/* Read-Only Environment Parameters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-[#111927] rounded-lg border border-[#253247]/60 flex items-center justify-between">
-                <span className="text-[#91A0B8]">Authentication Token:</span>
-                <span className="text-[#E8EDF5] font-medium">Argon2id + JWT HS256</span>
+              <div className="p-3 bg-[var(--black-950)] rounded-lg border border-[var(--line)]/60 flex items-center justify-between">
+                <span className="text-[var(--text-300)]">Authentication Token:</span>
+                <span className="text-[var(--text-100)] font-medium">Argon2id + JWT HS256</span>
               </div>
-              <div className="p-3 bg-[#111927] rounded-lg border border-[#253247]/60 flex items-center justify-between">
-                <span className="text-[#91A0B8]">Tenant Isolation:</span>
-                <span className="text-[#35C99A] font-medium">SQLite Multi-Tenant Filter</span>
+              <div className="p-3 bg-[var(--black-950)] rounded-lg border border-[var(--line)]/60 flex items-center justify-between">
+                <span className="text-[var(--text-300)]">Tenant Isolation:</span>
+                <span className="text-[var(--success-500)] font-medium">SQLite Multi-Tenant Filter</span>
               </div>
-              <div className="p-3 bg-[#111927] rounded-lg border border-[#253247]/60 flex items-center justify-between">
-                <span className="text-[#91A0B8]">Workspace Appearance:</span>
-                <span className="text-[#E8EDF5] font-medium">Midnight Dark (Calibrated)</span>
+              <div className="p-3 bg-[var(--black-950)] rounded-lg border border-[var(--line)]/60 flex items-center justify-between">
+                <span className="text-[var(--text-300)]">Workspace Appearance:</span>
+                <span className="text-[var(--text-100)] font-medium">Midnight Dark (Calibrated)</span>
               </div>
-              <div className="p-3 bg-[#111927] rounded-lg border border-[#253247]/60 flex items-center justify-between">
-                <span className="text-[#91A0B8]">Network Boundary:</span>
-                <span className="text-[#35C99A] font-medium">Zero Third-Party Ingestion</span>
+              <div className="p-3 bg-[var(--black-950)] rounded-lg border border-[var(--line)]/60 flex items-center justify-between">
+                <span className="text-[var(--text-300)]">Network Boundary:</span>
+                <span className="text-[var(--success-500)] font-medium">Zero Third-Party Ingestion</span>
               </div>
             </div>
           </section>
@@ -350,26 +350,26 @@ export const SettingsPage: React.FC = () => {
           <section
             id="security"
             aria-labelledby="auth-phrase-heading"
-            className="rounded-[14px] bg-[#171F2D] border border-[#253247] p-5 sm:p-6 flex flex-col gap-5 scroll-mt-6 shadow-xs"
+            className="rounded-[14px] bg-[var(--black-900)] border border-[var(--line)] p-5 sm:p-6 flex flex-col gap-5 scroll-mt-6 shadow-xs"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#253247]/60">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#1C2737] border border-[#253247] flex items-center justify-center text-[#648CFF]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--black-700)] border border-[var(--line)] flex items-center justify-center text-[var(--cobalt-300)]">
                   <KeyRound className="w-4 h-4" />
                 </div>
                 <div>
                   <h2
                     id="auth-phrase-heading"
-                    className="text-base font-semibold text-[#E8EDF5]"
+                    className="text-base font-semibold text-[var(--text-100)]"
                   >
                     Authentication Phrase
                   </h2>
-                  <p className="text-xs text-[#91A0B8] mt-0.5">
+                  <p className="text-xs text-[var(--text-300)] mt-0.5">
                     Update master cryptographic password used for workspace authentication.
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#1C2737] text-[#91A0B8] border border-[#253247]">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--black-700)] text-[var(--text-300)] border border-[var(--line)]">
                 Argon2id Key Derivation
               </span>
             </div>
@@ -378,9 +378,9 @@ export const SettingsPage: React.FC = () => {
               {passwordError && (
                 <div
                   role="alert"
-                  className="p-3 rounded-lg bg-red-950/40 border border-red-500/30 text-xs text-red-300 flex items-center gap-2"
+                  className="p-3 rounded-lg bg-[var(--alert-bg)] border border-[var(--alert-500)]/30 text-xs text-[var(--alert-400)] flex items-center gap-2"
                 >
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-[var(--alert-400)] shrink-0" />
                   <span>{passwordError}</span>
                 </div>
               )}
@@ -388,7 +388,7 @@ export const SettingsPage: React.FC = () => {
               {passwordSuccess && (
                 <div
                   role="status"
-                  className="p-3 rounded-lg bg-[#35C99A]/10 border border-[#35C99A]/25 text-xs text-[#35C99A] flex items-center gap-2"
+                  className="p-3 rounded-lg bg-[var(--success-500)]/10 border border-[var(--success-500)]/25 text-xs text-[var(--success-500)] flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{passwordSuccess}</span>
@@ -399,7 +399,7 @@ export const SettingsPage: React.FC = () => {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="current-password"
-                  className="text-xs font-medium text-[#91A0B8]"
+                  className="text-xs font-medium text-[var(--text-300)]"
                 >
                   Current Master Password
                 </label>
@@ -412,13 +412,13 @@ export const SettingsPage: React.FC = () => {
                     required
                     autoComplete="current-password"
                     placeholder="••••••••••••"
-                    className="w-full h-[38px] px-3.5 pr-10 bg-[#090D14] border border-[#253247] hover:border-[#374866] focus:border-[#648CFF] focus:outline-none focus:ring-1 focus:ring-[#648CFF] rounded-lg text-[13px] text-[#E8EDF5] placeholder-[#91A0B8]/50 transition-colors"
+                    className="w-full h-[38px] px-3.5 pr-10 bg-[var(--surface-base)] border border-[var(--line)] hover:border-[var(--line-strong)] focus:border-[var(--cobalt-300)] focus:outline-none focus:ring-1 focus:ring-[var(--cobalt-300)] rounded-lg text-[13px] text-[var(--text-100)] placeholder-[var(--text-300)]/50 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPass(!showCurrentPass)}
                     aria-label={showCurrentPass ? 'Hide password' : 'Show password'}
-                    className="absolute right-2.5 p-1 text-[#91A0B8] hover:text-[#E8EDF5] transition-colors cursor-pointer"
+                    className="absolute right-2.5 p-1 text-[var(--text-300)] hover:text-[var(--text-100)] transition-colors cursor-pointer"
                   >
                     {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
@@ -429,7 +429,7 @@ export const SettingsPage: React.FC = () => {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="new-password"
-                  className="text-xs font-medium text-[#91A0B8]"
+                  className="text-xs font-medium text-[var(--text-300)]"
                 >
                   New Master Password
                 </label>
@@ -442,18 +442,18 @@ export const SettingsPage: React.FC = () => {
                     required
                     autoComplete="new-password"
                     placeholder="••••••••••••"
-                    className="w-full h-[38px] px-3.5 pr-10 bg-[#090D14] border border-[#253247] hover:border-[#374866] focus:border-[#648CFF] focus:outline-none focus:ring-1 focus:ring-[#648CFF] rounded-lg text-[13px] text-[#E8EDF5] placeholder-[#91A0B8]/50 transition-colors"
+                    className="w-full h-[38px] px-3.5 pr-10 bg-[var(--surface-base)] border border-[var(--line)] hover:border-[var(--line-strong)] focus:border-[var(--cobalt-300)] focus:outline-none focus:ring-1 focus:ring-[var(--cobalt-300)] rounded-lg text-[13px] text-[var(--text-100)] placeholder-[var(--text-300)]/50 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPass(!showNewPass)}
                     aria-label={showNewPass ? 'Hide password' : 'Show password'}
-                    className="absolute right-2.5 p-1 text-[#91A0B8] hover:text-[#E8EDF5] transition-colors cursor-pointer"
+                    className="absolute right-2.5 p-1 text-[var(--text-300)] hover:text-[var(--text-100)] transition-colors cursor-pointer"
                   >
                     {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-                <span className="text-[11px] text-[#91A0B8]">
+                <span className="text-[11px] text-[var(--text-300)]">
                   Minimum 12 characters with letters, numbers, and symbols.
                 </span>
               </div>
@@ -462,7 +462,7 @@ export const SettingsPage: React.FC = () => {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="confirm-password"
-                  className="text-xs font-medium text-[#91A0B8]"
+                  className="text-xs font-medium text-[var(--text-300)]"
                 >
                   Confirm New Password
                 </label>
@@ -475,13 +475,13 @@ export const SettingsPage: React.FC = () => {
                     required
                     autoComplete="new-password"
                     placeholder="••••••••••••"
-                    className="w-full h-[38px] px-3.5 pr-10 bg-[#090D14] border border-[#253247] hover:border-[#374866] focus:border-[#648CFF] focus:outline-none focus:ring-1 focus:ring-[#648CFF] rounded-lg text-[13px] text-[#E8EDF5] placeholder-[#91A0B8]/50 transition-colors"
+                    className="w-full h-[38px] px-3.5 pr-10 bg-[var(--surface-base)] border border-[var(--line)] hover:border-[var(--line-strong)] focus:border-[var(--cobalt-300)] focus:outline-none focus:ring-1 focus:ring-[var(--cobalt-300)] rounded-lg text-[13px] text-[var(--text-100)] placeholder-[var(--text-300)]/50 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPass(!showConfirmPass)}
                     aria-label={showConfirmPass ? 'Hide password' : 'Show password'}
-                    className="absolute right-2.5 p-1 text-[#91A0B8] hover:text-[#E8EDF5] transition-colors cursor-pointer"
+                    className="absolute right-2.5 p-1 text-[var(--text-300)] hover:text-[var(--text-100)] transition-colors cursor-pointer"
                   >
                     {showConfirmPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
@@ -492,7 +492,7 @@ export const SettingsPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={passwordLoading}
-                  className="h-[38px] px-4 rounded-lg bg-[#3B66EB] hover:bg-[#4E77F3] active:bg-[#3258D6] text-white text-xs font-semibold inline-flex items-center gap-2 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
+                  className="h-[38px] px-4 rounded-lg bg-[var(--cobalt-500)] hover:bg-[var(--cobalt-400)] active:bg-[var(--cobalt-600)] text-[var(--text-100)] text-xs font-semibold inline-flex items-center gap-2 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cobalt-300)]"
                 >
                   {passwordLoading ? (
                     <>
@@ -514,36 +514,36 @@ export const SettingsPage: React.FC = () => {
           <section
             id="sessions"
             aria-labelledby="session-security-heading"
-            className="rounded-[14px] bg-[#171F2D] border border-[#253247] p-5 sm:p-6 flex flex-col gap-4 scroll-mt-6 shadow-xs"
+            className="rounded-[14px] bg-[var(--black-900)] border border-[var(--line)] p-5 sm:p-6 flex flex-col gap-4 scroll-mt-6 shadow-xs"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#253247]/60">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#1C2737] border border-[#253247] flex items-center justify-center text-[#648CFF]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--black-700)] border border-[var(--line)] flex items-center justify-center text-[var(--cobalt-300)]">
                   <Fingerprint className="w-4 h-4" />
                 </div>
                 <div>
                   <h2
                     id="session-security-heading"
-                    className="text-base font-semibold text-[#E8EDF5]"
+                    className="text-base font-semibold text-[var(--text-100)]"
                   >
                     Session Lifecycle
                   </h2>
-                  <p className="text-xs text-[#91A0B8] mt-0.5">
+                  <p className="text-xs text-[var(--text-300)] mt-0.5">
                     Rotating cryptographic refresh tokens and cross-device sessions.
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#1C2737] text-[#91A0B8] border border-[#253247]">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--black-700)] text-[var(--text-300)] border border-[var(--line)]">
                 Active Token Vault
               </span>
             </div>
 
-            <div className="p-4 bg-[#111927] border border-[#253247] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="p-4 bg-[var(--black-950)] border border-[var(--line)] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex flex-col gap-1 max-w-lg">
-                <span className="text-sm font-semibold text-[#E8EDF5]">
+                <span className="text-sm font-semibold text-[var(--text-100)]">
                   Revoke All Active Sessions
                 </span>
-                <span className="text-xs text-[#91A0B8] leading-relaxed">
+                <span className="text-xs text-[var(--text-300)] leading-relaxed">
                   Sign out across all browsers and devices immediately. All outstanding refresh tokens will be revoked in the backend token registry.
                 </span>
               </div>
@@ -552,7 +552,7 @@ export const SettingsPage: React.FC = () => {
                 type="button"
                 onClick={handleRevokeAllSessions}
                 disabled={revokeLoading}
-                className="h-[36px] px-3.5 rounded-lg bg-[#1C2737] hover:bg-[#253247] active:bg-[#111927] border border-[#253247] text-[#E8EDF5] text-xs font-semibold inline-flex items-center gap-2 transition-colors shrink-0 cursor-pointer disabled:opacity-50 shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
+                className="h-[36px] px-3.5 rounded-lg bg-[var(--black-700)] hover:bg-[var(--line)] active:bg-[var(--black-950)] border border-[var(--line)] text-[var(--text-100)] text-xs font-semibold inline-flex items-center gap-2 transition-colors shrink-0 cursor-pointer disabled:opacity-50 shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cobalt-300)]"
               >
                 {revokeLoading ? (
                   <>
@@ -573,36 +573,36 @@ export const SettingsPage: React.FC = () => {
           <section
             id="danger"
             aria-labelledby="danger-zone-heading"
-            className="rounded-[14px] bg-[#171F2D] border border-red-500/30 p-5 sm:p-6 flex flex-col gap-4 scroll-mt-6 shadow-xs"
+            className="rounded-[14px] bg-[var(--black-900)] border border-[var(--alert-500)]/30 p-5 sm:p-6 flex flex-col gap-4 scroll-mt-6 shadow-xs"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#253247]/60">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center text-[#F16F78]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--alert-bg)] border border-[var(--alert-500)]/30 flex items-center justify-center text-[var(--alert-500)]">
                   <ShieldAlert className="w-4 h-4" />
                 </div>
                 <div>
                   <h2
                     id="danger-zone-heading"
-                    className="text-base font-semibold text-[#F16F78]"
+                    className="text-base font-semibold text-[var(--alert-500)]"
                   >
                     Danger Zone
                   </h2>
-                  <p className="text-xs text-[#91A0B8] mt-0.5">
+                  <p className="text-xs text-[var(--text-300)] mt-0.5">
                     Permanent purge of operator record and forensic evidence.
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-[#F16F78] border border-red-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--alert-bg)] text-[var(--alert-500)] border border-[var(--alert-500)]/20">
                 Irreversible
               </span>
             </div>
 
-            <div className="p-4 bg-red-950/20 border border-red-500/25 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="p-4 bg-[var(--alert-bg)] border border-[var(--alert-500)]/25 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex flex-col gap-1 max-w-lg">
-                <span className="text-sm font-semibold text-[#F16F78]">
+                <span className="text-sm font-semibold text-[var(--alert-500)]">
                   Permanently Purge Operator Account & Analyses
                 </span>
-                <span className="text-xs text-[#91A0B8] leading-relaxed">
+                <span className="text-xs text-[var(--text-300)] leading-relaxed">
                   Irreversibly delete operator identity, all forensic analysis dossiers, audio-visual attention rollout heatmaps, and uploaded media artifacts from disk storage.
                 </span>
               </div>
@@ -610,7 +610,7 @@ export const SettingsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDeleteModalOpen(true)}
-                className="h-[36px] px-3.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 active:bg-red-500/30 border border-red-500/40 text-[#F16F78] text-xs font-semibold inline-flex items-center gap-2 transition-colors shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                className="h-[36px] px-3.5 rounded-lg bg-[var(--alert-bg)] hover:bg-[var(--alert-bg)] active:bg-[var(--alert-500)]/25 border border-[var(--alert-500)]/40 text-[var(--alert-500)] text-xs font-semibold inline-flex items-center gap-2 transition-colors shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--alert-500)]"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Purge Account & All Data</span>

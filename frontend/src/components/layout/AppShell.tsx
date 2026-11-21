@@ -29,7 +29,7 @@ export const AppShell: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--surface-base)] text-[var(--text-100)] flex font-sans selection:bg-[var(--cobalt-500)]/30 selection:text-white">
+    <div className="min-h-screen bg-[var(--surface-base)] text-[var(--text-100)] flex font-sans selection:bg-[var(--cobalt-500)]/30 selection:text-[var(--text-100)]">
       {/* Accessible Skip to Content Link */}
       <a
         href="#main-content"

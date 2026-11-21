@@ -1,5 +1,5 @@
 /**
- * Formatters for timecodes, file sizes, percentages, and timestamps.
+ * Formatters for timecodes, file sizes and timestamps.
  * Following instrument-panel readability guidelines from DESIGN.md.
  */
 
@@ -21,11 +21,6 @@ export function formatBytes(bytes: number): string {
   return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-export function formatPercent(val: number | null | undefined): string {
-  if (val === null || val === undefined || isNaN(val)) return '—';
-  return `${Math.round(val * 100)}%`;
-}
-
 export function formatRelativeTime(dateString: string): string {
   try {
     const date = new Date(dateString);
@@ -41,10 +36,4 @@ export function formatRelativeTime(dateString: string): string {
   } catch {
     return dateString;
   }
-}
-
-export function truncateHash(hash: string, len: number = 8): string {
-  if (!hash) return '';
-  if (hash.length <= len) return hash;
-  return `${hash.slice(0, len)}…`;
 }

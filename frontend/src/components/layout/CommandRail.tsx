@@ -8,17 +8,16 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Shield,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { ParallaxLogo } from '@/components/brand/ParallaxLogo';
 
 interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
-  badge?: string;
   exact?: boolean;
   matchPrefix?: string;
 }
@@ -30,7 +29,7 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'MAIN',
+    title: 'Bench',
     items: [
       { to: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
       { to: '/app/analyze', label: 'Analyze', icon: ScanEye, matchPrefix: '/app/analyses' },
@@ -38,17 +37,21 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'WORKSPACE',
-    items: [
-      { to: '/app/library', label: 'Library', icon: FolderArchive },
-    ],
+    title: 'Corpus',
+    items: [{ to: '/app/library', label: 'Library', icon: FolderArchive }],
   },
   {
-    title: 'PREFERENCES',
-    items: [
-      { to: '/app/settings', label: 'Settings', icon: Settings },
-    ],
+    title: 'Operator',
+    items: [{ to: '/app/settings', label: 'Settings', icon: Settings }],
   },
+];
+
+const MOBILE_ITEMS: NavItem[] = [
+  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/app/analyze', label: 'Analyze', icon: ScanEye, matchPrefix: '/app/analyses' },
+  { to: '/app/history', label: 'History', icon: History },
+  { to: '/app/library', label: 'Library', icon: FolderArchive },
+  { to: '/app/settings', label: 'Settings', icon: Settings },
 ];
 
 export interface CommandRailProps {
@@ -66,218 +69,189 @@ export const CommandRail: React.FC<CommandRailProps> = ({
 }) => {
   const location = useLocation();
 
-  // Handle Escape key to dismiss mobile drawer
   useEffect(() => {
     if (!mobileOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         onCloseMobile?.();
       }
     };
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [mobileOpen, onCloseMobile]);
 
-  // Determine active state including nested routes
-  const isItemActive = (item: NavItem) => {
-    if (item.exact) {
-      return location.pathname === item.to;
-    }
-    if (item.matchPrefix && location.pathname.startsWith(item.matchPrefix)) {
-      return true;
-    }
+  const isItemActive = (item: NavItem): boolean => {
+    if (item.exact) return location.pathname === item.to;
+    if (item.matchPrefix && location.pathname.startsWith(item.matchPrefix)) return true;
     return location.pathname.startsWith(item.to);
   };
 
+  const showLabels = !collapsed || mobileOpen;
+
   return (
     <>
-      {/* Mobile Drawer Overlay Backdrop */}
       {mobileOpen && (
-        <div
-          role="presentation"
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Close navigation menu"
           onClick={onCloseMobile}
-          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+          className="md:hidden fixed inset-0 z-40 bg-black/70 cursor-default"
         />
       )}
 
-      {/* Main Sidebar: Desktop Fixed/Sticky Full-Height + Mobile Slide-Out Drawer */}
       <aside
-        aria-label="Application Navigation"
+        aria-label="Application navigation"
         className={clsx(
-          'top-0 bottom-0 left-0 z-50 flex flex-col bg-[#0D131E] border-r border-[#253247] select-none shrink-0 h-screen',
-          // Desktop styling: 260px expanded, 72px collapsed, sticky full-viewport height
-          'md:sticky md:z-20 transition-[width] duration-200 ease-out motion-reduce:transition-none',
+          'top-0 bottom-0 left-0 z-50 flex flex-col h-screen select-none shrink-0',
+          'bg-[var(--surface-card)] border-r border-[var(--line)]',
+          'md:sticky md:z-20 transition-[width] duration-[var(--motion-normal)] ease-[var(--ease-instrument)] motion-reduce:transition-none',
           collapsed ? 'md:w-[72px] md:min-w-[72px] md:max-w-[72px]' : 'md:w-[260px] md:min-w-[260px] md:max-w-[260px]',
-          // Mobile state: slide-in drawer
-          mobileOpen
-            ? 'fixed w-[260px] max-w-[85vw] shadow-2xl animate-in slide-in-from-left duration-200'
-            : 'max-md:hidden',
+          mobileOpen ? 'fixed w-[260px] max-w-[85vw] shadow-[var(--shadow-overlay)] rail-in' : 'max-md:hidden',
         )}
       >
-        {/* ── Brand Header (Height: 72px, matching Global Header horizon) ── */}
+        {/* Brand header — aligns with the 72px global status strip */}
         <div
           className={clsx(
-            'h-[72px] border-b border-[#253247] flex items-center shrink-0 bg-[#0D131E]',
-            collapsed ? 'md:justify-center md:px-0 px-5' : 'px-5 gap-3.5',
+            'h-[72px] border-b border-[var(--line)] flex items-center shrink-0',
+            collapsed ? 'md:justify-center md:px-0 px-4' : 'px-4 gap-3',
           )}
         >
           <Link
             to="/app"
             onClick={onCloseMobile}
-            title={collapsed ? 'PARALLAX Forensics' : undefined}
+            title={collapsed ? 'PARALLAX — dashboard' : undefined}
             className={clsx(
-              'flex items-center group focus-visible:outline-2 focus-visible:outline-[#648CFF] rounded-lg',
-              collapsed ? 'md:justify-center' : 'gap-3.5',
+              'flex items-center rounded-[var(--radius-sm)] text-[var(--cobalt-300)]',
+              collapsed ? 'md:justify-center' : 'gap-3',
             )}
           >
-            {/* Logo Container (40 × 40px) */}
-            <div className="w-10 h-10 rounded-xl bg-[#111827] border border-[#253247] group-hover:border-[#648CFF]/50 transition-colors flex items-center justify-center text-[#648CFF] shadow-xs shrink-0">
-              <Shield size={20} strokeWidth={2} />
-            </div>
+            <span className="w-9 h-9 rounded-[var(--radius-lg)] bg-[var(--surface-base)] border border-[var(--line)] flex items-center justify-center shrink-0">
+              <ParallaxLogo size={22} />
+            </span>
 
-            {/* Brand Name & Subtitle */}
-            {(!collapsed || mobileOpen) && (
-              <div className={clsx('flex flex-col min-w-0', collapsed && 'md:hidden')}>
-                <span className="text-[16px] font-semibold text-[#E8EDF5] tracking-wide leading-tight">
+            {showLabels && (
+              <span className={clsx('flex flex-col min-w-0', collapsed && 'md:hidden')}>
+                <span className="font-display text-[15px] font-bold tracking-[0.08em] text-[var(--text-100)] leading-tight">
                   PARALLAX
                 </span>
-                <span className="text-[12px] text-[#91A0B8] font-normal leading-tight mt-0.5 truncate">
-                  Deepfake Detection System
+                <span className="font-mono text-[10px] text-[var(--text-400)] leading-tight mt-0.5 truncate">
+                  AVT²-DWF FORENSICS
                 </span>
-              </div>
+              </span>
             )}
           </Link>
 
-          {/* Close Control for Mobile Drawer */}
           <button
             type="button"
             onClick={onCloseMobile}
             aria-label="Close navigation menu"
-            className="md:hidden ml-auto w-8 h-8 rounded-lg bg-[#111827] border border-[#253247] hover:border-[#648CFF]/40 text-[#91A0B8] hover:text-[#E8EDF5] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#648CFF]"
+            className="md:hidden ml-auto w-9 h-9 rounded-[var(--radius-md)] border border-[var(--line)] text-[var(--text-300)] hover:text-[var(--text-100)] hover:border-[var(--line-strong)] flex items-center justify-center interactive-btn"
           >
             <X size={17} />
           </button>
         </div>
 
-        {/* ── Navigation Sections (Middle: MAIN, WORKSPACE, PREFERENCES) ── */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col">
+        <nav className="flex-1 overflow-y-auto px-2.5 py-4 flex flex-col">
           {NAV_SECTIONS.map((section, sectionIdx) => (
-            <div
-              key={section.title}
-              className={clsx('flex flex-col', sectionIdx > 0 ? 'pt-6' : 'pt-1')}
-            >
-              {/* Section Label (11px, font-weight 600, WCAG AA compliant slate, aligned with nav labels) */}
-              {!collapsed && (
-                <div className="px-3 mb-1.5 text-[11px] font-semibold tracking-wider text-[#7E8B9F] uppercase">
+            <div key={section.title} className={clsx('flex flex-col', sectionIdx > 0 && 'pt-5')}>
+              {showLabels && (
+                <div
+                  className={clsx(
+                    'px-3 mb-1.5 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--text-400)]',
+                    collapsed && 'md:hidden',
+                  )}
+                >
                   {section.title}
                 </div>
               )}
 
-              {/* Navigation Items (44px height, 12px padding, 19px icon, 12px gap, 9px radius, 4-6px vertical gap) */}
-              <nav aria-label={section.title} className="flex flex-col gap-1.5">
+              <ul className="flex flex-col gap-1 list-none">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const active = isItemActive(item);
 
                   return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={onCloseMobile}
-                      className={clsx(
-                        'group relative flex items-center rounded-[9px] text-[13px] font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-[#648CFF] focus-visible:outline-offset-1',
-                        collapsed
-                          ? 'md:justify-center md:px-0 h-[44px] px-3 gap-3'
-                          : 'h-[44px] px-3 gap-3',
-                        active
-                          ? 'bg-[#192437] text-[#E8EDF5] border border-[#2B3B55]'
-                          : 'text-[#91A0B8] bg-transparent border border-transparent hover:bg-[#151D2A] hover:text-[#E8EDF5] hover:border-[#253247]/60',
-                      )}
-                    >
-                      <Icon
-                        size={19}
-                        strokeWidth={2}
+                    <li key={item.to} className="relative">
+                      <NavLink
+                        to={item.to}
+                        onClick={onCloseMobile}
+                        aria-label={collapsed ? item.label : undefined}
                         className={clsx(
-                          'shrink-0 transition-colors',
+                          'group relative flex items-center rounded-[var(--radius-md)] text-[13px] font-medium interactive-btn',
+                          collapsed ? 'md:justify-center md:px-0 h-10 px-3 gap-3' : 'h-10 px-3 gap-3',
                           active
-                            ? 'text-[#648CFF]'
-                            : 'text-[#91A0B8] group-hover:text-[#E8EDF5]',
+                            ? 'bg-[var(--surface-hover)] text-[var(--text-100)]'
+                            : 'text-[var(--text-300)] hover:bg-[var(--surface-hover)]/60 hover:text-[var(--text-100)]',
                         )}
-                      />
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={clsx(
+                            'absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-full transition-colors',
+                            active ? 'bg-[var(--cobalt-400)]' : 'bg-transparent',
+                          )}
+                        />
+                        <Icon
+                          size={17}
+                          strokeWidth={1.75}
+                          className={clsx(
+                            'shrink-0 transition-colors',
+                            active
+                              ? 'text-[var(--cobalt-300)]'
+                              : 'text-[var(--text-400)] group-hover:text-[var(--text-200)]',
+                          )}
+                        />
+                        {showLabels && (
+                          <span className={clsx('truncate flex-1', collapsed && 'md:hidden')}>
+                            {item.label}
+                          </span>
+                        )}
+                      </NavLink>
 
-                      {/* Label Text (Sentence case, 13px, font-medium) */}
-                      {(!collapsed || mobileOpen) && (
-                        <span className={clsx('truncate flex-1 leading-none', collapsed && 'md:hidden')}>
-                          {item.label}
-                        </span>
-                      )}
-
-                      {(!collapsed || mobileOpen) && item.badge && (
-                        <span className={clsx('font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#171F2D] text-[#648CFF] border border-[#253247]', collapsed && 'md:hidden')}>
-                          {item.badge}
-                        </span>
-                      )}
-
-                      {/* Accessible Tooltip in Collapsed Desktop Mode */}
                       {collapsed && (
-                        <div
+                        <span
                           role="tooltip"
-                          className="hidden md:block absolute left-full ml-3 px-3 py-1.5 rounded-lg bg-[#171F2D] border border-[#253247] text-xs font-medium text-[#E8EDF5] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50"
+                          className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--surface-overlay)] border border-[var(--line-strong)] text-[11px] text-[var(--text-100)] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-[var(--motion-fast)] z-50"
                         >
                           {item.label}
-                        </div>
+                        </span>
                       )}
-                    </NavLink>
+                    </li>
                   );
                 })}
-              </nav>
+              </ul>
             </div>
           ))}
-        </div>
+        </nav>
 
-        {/* ── Footer: Sidebar Collapse / Expand Toggle (Desktop Only) ── */}
         {onToggleCollapse && (
-          <div className="hidden md:flex items-center p-3 border-t border-[#253247] bg-[#0D131E] shrink-0">
+          <div className="hidden md:flex items-center p-2.5 border-t border-[var(--line)] shrink-0">
             <button
               type="button"
               onClick={onToggleCollapse}
               aria-expanded={!collapsed}
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={collapsed ? 'Expand rail' : 'Collapse rail'}
               className={clsx(
-                'group relative flex items-center rounded-[9px] text-[13px] font-medium text-[#91A0B8] hover:text-[#E8EDF5] hover:bg-[#151D2A] transition-colors focus-visible:outline-2 focus-visible:outline-[#648CFF] cursor-pointer h-10',
-                collapsed
-                  ? 'w-full justify-center px-0'
-                  : 'w-full justify-between px-3',
+                'group flex items-center h-9 rounded-[var(--radius-md)] text-[12px] font-medium text-[var(--text-400)] hover:text-[var(--text-100)] hover:bg-[var(--surface-hover)] interactive-btn',
+                collapsed ? 'w-full justify-center' : 'w-full justify-between px-3',
               )}
             >
-              {!collapsed && <span>Collapse</span>}
-              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-
-              {collapsed && (
-                <div
-                  role="tooltip"
-                  className="absolute left-full ml-3 px-3 py-1.5 rounded-lg bg-[#171F2D] border border-[#253247] text-xs font-medium text-[#E8EDF5] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50"
-                >
-                  Expand sidebar
-                </div>
-              )}
+              {!collapsed && <span>Collapse rail</span>}
+              {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
             </button>
           </div>
         )}
       </aside>
 
-      {/* Mobile Bottom Quick-Access Bar (below 768px) */}
+      {/* Mobile quick bar — solid surface, no blur, 44px touch targets. */}
       <nav
-        aria-label="Mobile Navigation Quick Bar"
-        className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-[#0D131E]/95 backdrop-blur-md border-t border-[#253247] flex items-center justify-around px-2 z-30 select-none"
+        aria-label="Mobile navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-[var(--surface-card)] border-t border-[var(--line)] flex items-center justify-around px-1 z-30 select-none"
       >
-        {[
-          { to: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-          { to: '/app/analyze', label: 'Analyze', icon: ScanEye, matchPrefix: '/app/analyses' },
-          { to: '/app/history', label: 'History', icon: History },
-          { to: '/app/library', label: 'Library', icon: FolderArchive },
-          { to: '/app/settings', label: 'Settings', icon: Settings },
-        ].map((item) => {
+        {MOBILE_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = isItemActive(item);
 
@@ -286,14 +260,12 @@ export const CommandRail: React.FC<CommandRailProps> = ({
               key={item.to}
               to={item.to}
               className={clsx(
-                'flex flex-col items-center justify-center min-w-[50px] min-h-[44px] py-1 px-1 rounded-lg text-[10px] font-sans font-medium transition-colors',
-                active
-                  ? 'text-[#648CFF]'
-                  : 'text-[#91A0B8] hover:text-[#E8EDF5]',
+                'flex flex-col items-center justify-center min-w-[52px] min-h-[44px] rounded-[var(--radius-md)] font-mono text-[9px] uppercase tracking-wide',
+                active ? 'text-[var(--cobalt-300)]' : 'text-[var(--text-400)]',
               )}
             >
-              <Icon size={18} className={active ? 'text-[#648CFF]' : 'currentColor'} />
-              <span className="truncate mt-0.5 leading-none">{item.label}</span>
+              <Icon size={17} strokeWidth={active ? 2.25 : 1.75} />
+              <span className="truncate mt-1 leading-none">{item.label}</span>
             </NavLink>
           );
         })}

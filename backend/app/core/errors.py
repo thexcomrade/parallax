@@ -66,9 +66,9 @@ class NotFoundException(AppException):
 
 
 class ConflictException(AppException):
-    def __init__(self, message: str = "Resource conflict") -> None:
+    def __init__(self, message: str = "Resource conflict", code: str = "CONFLICT") -> None:
         super().__init__(
-            code="CONFLICT",
+            code=code,
             message=message,
             status_code=status.HTTP_409_CONFLICT,
         )

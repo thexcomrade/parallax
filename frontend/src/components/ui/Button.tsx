@@ -35,17 +35,17 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      'bg-[var(--lime-400)] text-[var(--lime-ink)] font-bold hover:bg-[var(--lime-300)] active:translate-y-[1px] border border-[var(--lime-400)] shadow-[0_2px_12px_rgba(200,255,46,0.2)]',
+      'bg-[var(--cobalt-500)] text-[var(--text-100)] hover:bg-[var(--cobalt-400)] active:bg-[var(--cobalt-600)] border border-[var(--cobalt-500)]',
     secondary:
-      'bg-[var(--surface-elevated)] text-[var(--text-100)] border border-[var(--border-strong)] hover:border-[var(--cobalt-400)] hover:text-white hover:bg-[var(--surface-hover)] active:bg-[var(--black-700)] shadow-[0_2px_8px_rgba(0,0,0,0.3)]',
+      'bg-[var(--surface-elevated)] text-[var(--text-100)] border border-[var(--border-strong)] hover:border-[var(--cobalt-400)] hover:text-[var(--text-100)] hover:bg-[var(--surface-hover)] active:bg-[var(--black-700)] shadow-[0_2px_8px_rgba(0,0,0,0.3)]',
     outline:
-      'bg-transparent text-[var(--text-200)] border border-[var(--border-default)] hover:border-[var(--border-strong)] hover:text-white hover:bg-[var(--surface-card)]',
+      'bg-transparent text-[var(--text-200)] border border-[var(--border-default)] hover:border-[var(--border-strong)] hover:text-[var(--text-100)] hover:bg-[var(--surface-card)]',
     subtle:
       'bg-[var(--surface-card)] text-[var(--text-300)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] hover:text-[var(--text-100)]',
     ghost:
       'bg-transparent text-[var(--text-300)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-100)] border border-transparent',
     alert:
-      'bg-[var(--alert-500)] text-[var(--black-950)] font-black hover:bg-[var(--alert-400)] active:translate-y-[1px] border border-[var(--alert-500)] shadow-[0_2px_12px_rgba(255,77,94,0.25)]',
+      'bg-[var(--alert-500)] text-[var(--black-950)] font-black hover:bg-[var(--alert-400)] active:translate-y-[1px] border border-[var(--alert-500)]',
   }[variant];
 
   return (

@@ -22,8 +22,8 @@ export const Toast: React.FC<ToastProps> = ({
   }, [durationMs, onDismiss]);
 
   const borderVariant = {
-    info: 'border-[var(--cobalt-500)] text-white',
-    success: 'border-[var(--lime-400)] text-[var(--lime-400)]',
+    info: 'border-[var(--cobalt-500)] text-[var(--text-100)]',
+    success: 'border-[var(--success-500)] text-[var(--success-500)]',
     alert: 'border-[var(--alert-500)] text-[var(--alert-500)]',
   }[variant];
 
@@ -37,11 +37,11 @@ export const Toast: React.FC<ToastProps> = ({
       )}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
-      <span className="text-white font-sans text-xs">{message}</span>
+      <span className="text-[var(--text-100)] font-sans text-xs">{message}</span>
       <button
         type="button"
         onClick={onDismiss}
-        className="ml-2 text-[var(--text-400)] hover:text-white uppercase font-mono text-[10px]"
+        className="ml-2 text-[var(--text-400)] hover:text-[var(--text-100)] uppercase font-mono text-[10px]"
         aria-label="Dismiss status notification"
       >
         [×]

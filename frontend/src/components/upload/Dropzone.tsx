@@ -25,10 +25,12 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const inactive = disabled || isUploading;
+
   const setValidationError = useCallback(
-    (msg: string | null) => {
-      setError(msg);
-      onErrorChange?.(msg);
+    (message: string | null) => {
+      setError(message);
+      onErrorChange?.(message);
     },
     [onErrorChange],
   );
@@ -36,17 +38,20 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   const validateAndSelect = useCallback(
     (file: File) => {
       setValidationError(null);
-      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-      if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-        setValidationError(`Unsupported file format. Accepted formats: ${ACCEPTED_EXTENSIONS.join(', ')}`);
+      const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
+
+      if (!ACCEPTED_EXTENSIONS.includes(extension)) {
+        setValidationError(
+          `Unsupported container ${extension.toUpperCase()}. Accepted: ${ACCEPTED_EXTENSIONS.join(', ')}.`,
+        );
         return;
       }
       if (file.size > MAX_BYTES) {
-        setValidationError(`File size exceeds server-enforced limit of ${MAX_SIZE_MB} MB.`);
+        setValidationError(`File exceeds the ${MAX_SIZE_MB} MB ingest limit.`);
         return;
       }
       if (file.size === 0) {
-        setValidationError('Selected media file is empty (0 bytes).');
+        setValidationError('Selected file is empty (0 bytes).');
         return;
       }
       onFileSelected(file);
@@ -54,126 +59,94 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     [onFileSelected, setValidationError],
   );
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (disabled || isUploading) return;
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (disabled || isUploading) return;
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      validateAndSelect(file);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      validateAndSelect(file);
-    }
-    e.target.value = '';
-  };
-
   const openFileDialog = () => {
-    if (!disabled && !isUploading) {
-      inputRef.current?.click();
-    }
+    if (!inactive) inputRef.current?.click();
   };
 
   return (
-    <div
-      role="region"
-      aria-label="Media upload dropzone"
-      tabIndex={disabled || isUploading ? -1 : 0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          openFileDialog();
-        }
-      }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={openFileDialog}
-      className={clsx(
-        'w-full min-h-[260px] sm:min-h-[275px] max-h-[300px] rounded-[14px] border border-dashed transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center p-6 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]',
-        isDragOver
-          ? 'border-[#648CFF] bg-[#172338]/60 shadow-[0_0_24px_rgba(100,140,255,0.12)]'
-          : 'border-[#34445C] bg-[#111927] hover:border-[#4B5E7D] hover:bg-[#131B29]',
-        (disabled || isUploading) && 'opacity-50 cursor-not-allowed',
-        className,
-      )}
-    >
-      <label htmlFor="media-file-input" className="sr-only">
-        Choose video file
-      </label>
+    <div role="region" aria-label="Media upload" className={className}>
+      {/* The entire surface is one native control: click, Enter and Space all
+          open the picker, and drag events share the same hit area. */}
+      <button
+        type="button"
+        onClick={openFileDialog}
+        disabled={inactive}
+        aria-describedby="dropzone-formats"
+        onDragOver={(event) => {
+          event.preventDefault();
+          if (!inactive) setIsDragOver(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          setIsDragOver(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragOver(false);
+          if (inactive) return;
+          const file = event.dataTransfer.files?.[0];
+          if (file) validateAndSelect(file);
+        }}
+        className={clsx(
+          'w-full min-h-[248px] rounded-[var(--radius-cell)] border border-dashed cursor-pointer select-none',
+          'flex flex-col items-center justify-center text-center px-6 py-8',
+          'transition-colors duration-[var(--motion-normal)]',
+          isDragOver
+            ? 'border-[var(--cobalt-400)] bg-[var(--surface-elevated)]'
+            : 'border-[var(--line-strong)] bg-[var(--surface-card)] hover:border-[var(--cobalt-500)]/70 hover:bg-[var(--surface-elevated)]',
+          inactive && 'opacity-50 cursor-not-allowed',
+        )}
+      >
+        <span className="w-11 h-11 rounded-[var(--radius-lg)] bg-[var(--surface-base)] border border-[var(--line)] flex items-center justify-center text-[var(--cobalt-300)] mb-3">
+          <Upload size={19} aria-hidden="true" />
+        </span>
+
+        <span className="sr-only">Upload video file for forensic deepfake analysis.</span>
+
+        <span className="text-[15px] font-semibold text-[var(--text-100)]">
+          {isDragOver ? 'Release to stage this file' : 'Drop a video, or choose a file'}
+        </span>
+
+        <span className="text-[12px] text-[var(--text-300)] mt-1">
+          The clip is decoded and analysed inside the backend worker.
+        </span>
+
+        <span className="mt-4 inline-flex items-center gap-2 h-9 px-3.5 rounded-[var(--radius-md)] bg-[var(--cobalt-500)] text-[var(--text-100)] text-[12px] font-semibold">
+          <FolderOpen size={14} aria-hidden="true" />
+          Browse files
+        </span>
+
+        <span
+          id="dropzone-formats"
+          className="mt-4 font-mono text-[10px] text-[var(--text-400)] tracking-wide"
+        >
+          MP4 · MOV · WEBM · AVI · MKV — max {MAX_SIZE_MB} MB
+        </span>
+      </button>
+
       <input
         ref={inputRef}
         type="file"
-        id="media-file-input"
         accept={ACCEPTED_EXTENSIONS.join(',')}
         className="sr-only"
-        onChange={handleFileChange}
-        disabled={disabled || isUploading}
         tabIndex={-1}
+        aria-hidden="true"
+        disabled={inactive}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) validateAndSelect(file);
+          event.target.value = '';
+        }}
       />
 
-      {/* 1. Compact upload icon container (48-52px, 22-24px icon) */}
-      <div className="w-12 h-12 rounded-[12px] bg-[#171F2D] border border-[#253247] flex items-center justify-center text-[#648CFF] mb-3 transition-transform duration-200">
-        <Upload className="w-6 h-6" />
-      </div>
-
-      {/* 2. Main instruction */}
-      <h2 className="text-base sm:text-[17px] font-semibold text-[#E8EDF5] tracking-tight mb-1">
-        {isDragOver ? 'Drop your video to upload' : 'Drop your video here'}
-      </h2>
-
-      {/* 3. Supporting text */}
-      <p className="text-xs sm:text-[13px] text-[#91A0B8] mb-4">
-        or browse files from your device
-      </p>
-
-      {/* 4. Browse Files button (content-fit, 38-40px height, 13px font) */}
-      <button
-        type="button"
-        disabled={disabled || isUploading}
-        onClick={(e) => {
-          e.stopPropagation();
-          openFileDialog();
-        }}
-        aria-label="Browse Files — Upload video file for forensic deepfake analysis"
-        className="h-[38px] w-fit px-4 rounded-[8px] text-[13px] font-medium bg-[#3B66EB] hover:bg-[#3258D6] active:bg-[#284BBB] text-white inline-flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-xs"
-      >
-        <FolderOpen className="w-4 h-4" />
-        <span>Browse Files</span>
-        <span className="sr-only">Upload video file for forensic deepfake analysis</span>
-      </button>
-
-      {/* 5. Supported file information (contrast >= 4.5:1 against #111927) */}
-      <div className="mt-4 text-[11px] font-mono text-[#91A0B8] tracking-tight">
-        MP4, MOV, WEBM, AVI, MKV · Max {MAX_SIZE_MB} MB · Up to 60s
-      </div>
-
-      {/* Validation feedback if invalid file was selected */}
       {error && (
-        <div
+        <p
           role="alert"
-          aria-live="polite"
-          onClick={(e) => e.stopPropagation()}
-          className="mt-3.5 inline-flex items-center gap-2 text-xs font-sans text-red-300 bg-red-950/50 border border-red-500/30 px-3.5 py-1.5 rounded-[8px]"
+          className="mt-3 inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--alert-500)]/40 bg-[var(--alert-bg)] px-3 py-2 text-[12px] text-[var(--text-200)]"
         >
-          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-          <span>{error}</span>
-        </div>
+          <AlertCircle size={14} className="text-[var(--alert-400)] shrink-0" aria-hidden="true" />
+          {error}
+        </p>
       )}
     </div>
   );

@@ -280,6 +280,61 @@ def test_upload_magic_byte_enforcement(client: TestClient, db_session: Session) 
     assert resp.json()["code"] in ("INVALID_MAGIC_BYTES", "VIDEO_DECODE_ERROR")
 
 
+# -----------------------------------------------------------------------------
+# 8. Password Change & Credential Hardening Enforcement
+# -----------------------------------------------------------------------------
+def test_password_change_security_enforcement(client: TestClient, db_session: Session) -> None:
+    """Password change enforces authentication, complexity, anti-reuse, and token revocation."""
+    email = "hardening_test@audit.io"
+    initial_pass = "InitialSecurePassword2026!"
+    _create_user(db_session, email, initial_pass)
+
+    # 1. Login to establish session
+    login_res = client.post("/api/v1/auth/login", json={"email": email, "password": initial_pass})
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+    cookie_r1 = login_res.cookies.get("refresh_token")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Reject incorrect current password
+    bad_old = client.post(
+        "/api/v1/auth/change-password",
+        headers=headers,
+        json={"current_password": "WrongPassword123!", "new_password": "AlternativePassword2026!"},
+    )
+    assert bad_old.status_code == 401
+
+    # 3. Reject password under 12 chars
+    short_pass = client.post(
+        "/api/v1/auth/change-password",
+        headers=headers,
+        json={"current_password": initial_pass, "new_password": "Short123!"},
+    )
+    assert short_pass.status_code in (400, 422)
+
+    # 4. Reject reuse of current password
+    reuse_pass = client.post(
+        "/api/v1/auth/change-password",
+        headers=headers,
+        json={"current_password": initial_pass, "new_password": initial_pass},
+    )
+    assert reuse_pass.status_code == 400
+    assert reuse_pass.json()["code"] == "PASSWORD_REUSE"
+
+    # 5. Legitimate password change succeeds
+    valid_change = client.post(
+        "/api/v1/auth/change-password",
+        headers=headers,
+        json={"current_password": initial_pass, "new_password": "AlternativePassword2026!"},
+    )
+    assert valid_change.status_code == 200
+
+    # 6. Verify previous session refresh token is invalidated
+    if cookie_r1:
+        stale_refresh = client.post("/api/v1/auth/refresh", cookies={"refresh_token": cookie_r1})
+        assert stale_refresh.status_code == 401
+
+
 if __name__ == "__main__":
     import pytest
 

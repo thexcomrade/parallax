@@ -140,6 +140,7 @@ def me(current_user: User = Depends(get_current_user)) -> UserResponse:
     summary="Update account password and revoke existing sessions",
 )
 def change_password(
+    response: Response,
     payload: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -150,6 +151,7 @@ def change_password(
         old_pass=payload.current_password,
         new_pass=payload.new_password,
     )
+    AuthService.clear_cookie(response)
     return MessageResponse(message="Password successfully updated; previous sessions revoked")
 
 

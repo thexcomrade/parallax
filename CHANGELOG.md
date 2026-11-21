@@ -4,6 +4,30 @@ All notable changes to the PARALLAX Audio-Visual Deepfake Forensics system are d
 
 ---
 
+## [1.2.0] — 2026-11-21
+
+### Frontend A–Z Audit & Design-System Consolidation
+- **Single token layer**: `frontend/src/styles/tokens.css` is now the only colour/spacing/motion source. Removed the second ad-hoc palette (611 hard-coded hex values across 13 files) and the duplicate `@theme`/`:root` declarations; added `--space-*`, `--success-*`, `--warning-*`, `--accent-*` and the `xs` breakpoint.
+- **Design decisions**: primary action is Cobalt everywhere (previously lime on auth screens, blue elsewhere); `AUTHENTIC` is Emerald; amber reserved for untrained/inconclusive. `docs/design/DESIGN.md` §2/§7/§8 updated to match; lime retired.
+- **Authentication**: rebuilt `/login` and `/register` on the shared `Field`/`Button` primitives with the real modality specification, removed the “Welcome back” copy, decorative blurred blobs, empty badge and unverifiable “256-bit rotating sessions” claim.
+- **Contract & security**: analysis JSON export and history CSV no longer include `p_fake`; report deletion moved from `window.confirm`/`alert` to the focus-trapped `Dialog`.
+- **Dead code**: deleted the unused `components/viz` and `components/bento` trees, `useCursorSync`, `useAuthenticatedImage`, `Tabs`, the unused UI barrel and `PageHeader` (≈1,650 lines of source). None of them was reachable from `routes.tsx`, so the shipped bundle is unchanged; they also rendered internal `p_fake`, modality weights and sync scores, which is why removal matters for the contract.
+- **Accessibility/semantics**: drop surface is a single native button (no clickable `div`), dashboard ingestion tile is a link, mobile nav drawer/backdrop and popovers got proper dialog/tooltip semantics, focus ring + reduced-motion verified.
+- **Docs**: `experiments/phase7_deployment/FRONTEND_COMPLETE_CODE_AUDIT.md` and `FRONTEND_REDESIGN_REPORT.md`.
+
+---
+
+## [1.1.0] — 2026-11-21
+
+### Phase 7 & Post-Deployment Remediation: Production Hardening, Branding & Infrastructure Architecture
+- **Brand Identity & UI System**: Redesigned official PARALLAX vector mark (`ParallaxLogo.tsx`) featuring precision dual-stream optical prism and acoustic harmonic facets with central dynamic weight fusion core. Replaced generic icons across CommandRail, StatusStrip, LoginPage, and RegisterPage, alongside crisp 32x32 SVG favicon.
+- **Authentication UX Remediation**: Resolved onboarding and login credential ambiguity by introducing explicit analyst registration routing, instructional hints for new operators, and targeted inline guidance for failed credentials.
+- **Repository Architecture & Hygiene**: Overhauled root `.gitignore` to protect production weights and evaluation manifests while excluding build artifacts, local secrets, and caches. Cleared stale `.pyc` files and empty temporary directories.
+- **Enterprise Deployment & Orchestration**: Containerized staging deployment using PostgreSQL 16, Redis 7 message queue, asynchronous distributed GPU inference worker, Nginx reverse proxy, and Cloudflare Quick Tunnel orchestration.
+- **Disaster Recovery & Backup Consolidation**: Centralized disaster recovery assets into `D:\Projects\parallax-backup\` with cryptographic SHA-256 verification and automated restoration validation.
+
+---
+
 ## [1.0.0] — 2026-11-16
 
 ### Phase 15: Final Production Audit & Release Readiness

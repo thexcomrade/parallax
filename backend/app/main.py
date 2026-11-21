@@ -1,3 +1,5 @@
+import asyncio
+import os
 import time
 import uuid
 from collections.abc import AsyncGenerator, Awaitable, Callable
@@ -95,7 +97,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="PARALLAX Deepfake Detection System",
-    version="1.0.0",
+    version=settings.APP_VERSION,
     docs_url="/docs" if not settings.is_production else None,
     redoc_url="/redoc" if not settings.is_production else None,
     openapi_url="/openapi.json" if not settings.is_production else None,
@@ -112,11 +114,31 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 
+# In-flight request counter for server overload protection (Workstream A)
+_in_flight_requests: int = 0
+
+
 # Observability, Request ID & Metrics Middleware
 @app.middleware("http")
 async def observability_and_metrics_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
+    global _in_flight_requests
+
+    endpoint = request.url.path
+    # Health checks are always permitted even under overload to preserve orchestration liveness
+    is_health = endpoint.startswith("/health") or endpoint in ("/api/v1/health", "/api/v1/ready")
+    if not is_health and _in_flight_requests >= settings.MAX_IN_FLIGHT_REQUESTS:
+        RATELIMIT_REJECTIONS_TOTAL.labels(endpoint=endpoint).inc()
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "2"},
+            content={
+                "detail": "Server is experiencing high traffic. Please retry in 2 seconds.",
+                "code": "CAPACITY_OVERLOAD",
+            },
+        )
+
     # 1. Request ID propagation and correlation
     req_id = request.headers.get("X-Request-ID")
     if not req_id or len(req_id) > 64:
@@ -124,14 +146,15 @@ async def observability_and_metrics_middleware(
     set_request_context(req_id)
 
     method = request.method
-    endpoint = request.url.path
     t0 = time.perf_counter()
 
     HTTP_ACTIVE_REQUESTS.labels(method=method).inc()
+    _in_flight_requests += 1
     try:
         response = await call_next(request)
     finally:
         HTTP_ACTIVE_REQUESTS.labels(method=method).dec()
+        _in_flight_requests = max(0, _in_flight_requests - 1)
 
     duration_s = time.perf_counter() - t0
     status_code = response.status_code
@@ -212,6 +235,13 @@ if cors_origins:
 # Health Checks & Readiness Probes
 # ==============================================================================
 
+# In-memory readiness check cache to prevent DB connection pool exhaustion during load spikes
+_last_readiness_time: float = 0.0
+_last_readiness_checks: dict[str, str] = {}
+_last_readiness_status: int = 200
+_readiness_lock = asyncio.Lock()
+
+
 @app.get("/health", include_in_schema=False)
 @app.get("/health/live", summary="Liveness Probe")
 @app.get("/health/liveness", summary="Liveness Probe")
@@ -226,57 +256,88 @@ async def readiness_probe() -> JSONResponse:
     """Readiness probe evaluating PostgreSQL, Redis, and storage dependencies.
 
     Note: API readiness strictly does NOT require GPU model loading.
+    Applies double-checked locking with a 1.0s TTL cache under high concurrency
+    to avoid DB connection pool exhaustion (thundering herd protection).
     """
-    checks: dict[str, str] = {
-        "database": "unknown",
-        "redis": "unknown",
-        "storage": "unknown",
-    }
-    all_ready = True
+    global _last_readiness_time, _last_readiness_checks, _last_readiness_status
 
-    # 1. Database check
-    try:
-        with SessionLocal() as db:
-            db.execute(text("SELECT 1"))
-            checks["database"] = "ok"
-    except Exception as e:
-        logger.warning("Readiness probe database check failed: %s", e)
-        checks["database"] = f"unhealthy: {type(e).__name__}"
-        all_ready = False
+    now = time.monotonic()
+    is_cached = (now - _last_readiness_time < 1.0) and bool(_last_readiness_checks)
+    if os.environ.get("TESTING") != "1" and is_cached:
+        return JSONResponse(
+            status_code=_last_readiness_status,
+            content={
+                "status": "ready" if _last_readiness_status == 200 else "unready",
+                "checks": _last_readiness_checks,
+            },
+        )
 
-    # 2. Redis check
-    try:
-        from app.core.redis import check_redis_health
+    async with _readiness_lock:
+        now = time.monotonic()
+        is_cached = (now - _last_readiness_time < 1.0) and bool(_last_readiness_checks)
+        if os.environ.get("TESTING") != "1" and is_cached:
+            return JSONResponse(
+                status_code=_last_readiness_status,
+                content={
+                    "status": "ready" if _last_readiness_status == 200 else "unready",
+                    "checks": _last_readiness_checks,
+                },
+            )
 
-        redis_ok = await check_redis_health()
-        checks["redis"] = "ok" if redis_ok else "unreachable"
-        if not redis_ok:
+        checks: dict[str, str] = {
+            "database": "unknown",
+            "redis": "unknown",
+            "storage": "unknown",
+        }
+        all_ready = True
+
+        # 1. Database check
+        try:
+            with SessionLocal() as db:
+                db.execute(text("SELECT 1"))
+                checks["database"] = "ok"
+        except Exception as e:
+            logger.warning("Readiness probe database check failed: %s", e)
+            checks["database"] = f"unhealthy: {type(e).__name__}"
             all_ready = False
-    except Exception as e:
-        logger.warning("Readiness probe Redis check failed: %s", e)
-        checks["redis"] = f"unhealthy: {type(e).__name__}"
-        all_ready = False
 
-    # 3. Storage check
-    try:
-        storage = get_storage_service()
-        storage_ok = storage.check_health()
-        checks["storage"] = "ok" if storage_ok else "unhealthy"
-        if not storage_ok:
+        # 2. Redis check
+        try:
+            from app.core.redis import check_redis_health
+
+            redis_ok = await check_redis_health()
+            checks["redis"] = "ok" if redis_ok else "unreachable"
+            if not redis_ok:
+                all_ready = False
+        except Exception as e:
+            logger.warning("Readiness probe Redis check failed: %s", e)
+            checks["redis"] = f"unhealthy: {type(e).__name__}"
             all_ready = False
-    except Exception as e:
-        logger.warning("Readiness probe storage check failed: %s", e)
-        checks["storage"] = f"unhealthy: {type(e).__name__}"
-        all_ready = False
 
-    status_code = 200 if all_ready else 503
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": "ready" if all_ready else "unready",
-            "checks": checks,
-        },
-    )
+        # 3. Storage check
+        try:
+            storage = get_storage_service()
+            storage_ok = storage.check_health()
+            checks["storage"] = "ok" if storage_ok else "unhealthy"
+            if not storage_ok:
+                all_ready = False
+        except Exception as e:
+            logger.warning("Readiness probe storage check failed: %s", e)
+            checks["storage"] = f"unhealthy: {type(e).__name__}"
+            all_ready = False
+
+        status_code = 200 if all_ready else 503
+        _last_readiness_time = now
+        _last_readiness_checks = checks
+        _last_readiness_status = status_code
+
+        return JSONResponse(
+            status_code=status_code,
+            content={
+                "status": "ready" if all_ready else "unready",
+                "checks": checks,
+            },
+        )
 
 
 # ==============================================================================

@@ -32,9 +32,11 @@ engine_kwargs: dict[str, Any] = {
 if db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 else:
-    # PostgreSQL pool configuration
-    engine_kwargs["pool_size"] = 20
-    engine_kwargs["max_overflow"] = 10
+    # PostgreSQL pool configuration budgeted for multi-worker scaling:
+    # API_WORKERS(4) * (15 + 5) + Worker(5) + Admin(5) = 90 <= 100 max_connections
+    engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+    engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
     engine_kwargs["pool_recycle"] = 300
     if settings.PGBOUNCER_MODE:
         connect_args["prepare_threshold"] = None

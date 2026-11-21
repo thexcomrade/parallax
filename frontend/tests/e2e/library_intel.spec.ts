@@ -96,7 +96,7 @@ test.describe('Phase 8: Library & Intel Public APIs', () => {
     });
 
     await page.goto('/app/intel');
-    await expect(page.locator('h1')).toContainText('Forensic Threat & Research Recon');
+    await expect(page.locator('h1')).toContainText(/Threat & research recon/i);
 
     // Verify provenance notice
     await expect(page.getByLabel('Provenance notice')).toBeVisible();
@@ -107,7 +107,7 @@ test.describe('Phase 8: Library & Intel Public APIs', () => {
     await expect(page.getByText('Technical Pulse')).toBeVisible();
 
     // Verify refresh telemetry button is present
-    const refreshBtn = page.getByRole('button', { name: /REFRESH RECON/i });
+    const refreshBtn = page.getByRole('button', { name: /Refresh feeds/i });
     await expect(refreshBtn).toBeVisible();
 
     // Verify no horizontal overflow

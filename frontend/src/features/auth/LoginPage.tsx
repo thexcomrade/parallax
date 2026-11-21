@@ -2,20 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowRight, AlertCircle, ShieldCheck, ScanFace, AudioLines, GitMerge } from 'lucide-react';
 import { loginSchema, type LoginFormData } from './authSchemas';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/lib/api';
-import {
-  ArrowRight,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  Loader2,
-  ShieldCheck,
-} from 'lucide-react';
+import { ParallaxLogo } from '@/components/brand/ParallaxLogo';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
 
-// ─── Neural Network Face Mesh Canvas (Static Image Display) ─────────────────
-const NeuralFaceCanvas: React.FC = () => {
+/**
+ * Static optical-mesh plate. Drawn once per resize; no animation loop and no
+ * network dependency beyond the bundled plate, so it costs nothing after load.
+ */
+const SignalPlate: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -24,18 +23,18 @@ const NeuralFaceCanvas: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const img = new Image();
-    img.src = '/assets/neural-face-mesh.jpg';
+    const image = new Image();
+    image.src = '/assets/neural-face-mesh.jpg';
 
     const render = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      const w = rect.width;
-      const h = rect.height;
-      if (w === 0 || h === 0) return;
+      const width = rect.width;
+      const height = rect.height;
+      if (width === 0 || height === 0) return;
 
-      const targetW = Math.floor(w * dpr);
-      const targetH = Math.floor(h * dpr);
+      const targetW = Math.floor(width * dpr);
+      const targetH = Math.floor(height * dpr);
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
         canvas.height = targetH;
@@ -43,80 +42,73 @@ const NeuralFaceCanvas: React.FC = () => {
 
       ctx.save();
       ctx.scale(dpr, dpr);
+      ctx.fillStyle = '#04060b';
+      ctx.fillRect(0, 0, width, height);
 
-      // Deep dark background matching theme
-      ctx.fillStyle = '#090D14';
-      ctx.fillRect(0, 0, w, h);
+      if (image.complete && image.naturalWidth > 0) {
+        const imageRatio = image.naturalWidth / image.naturalHeight;
+        const canvasRatio = width / height;
+        const drawW = canvasRatio > imageRatio ? width : height * imageRatio;
+        const drawH = canvasRatio > imageRatio ? width / imageRatio : height;
+        ctx.drawImage(image, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
 
-      if (img.complete && img.naturalWidth > 0) {
-        // Draw image covering the canvas (object-fit: cover, centered)
-        const imgRatio = img.naturalWidth / img.naturalHeight;
-        const canvasRatio = w / h;
-        let drawW: number;
-        let drawH: number;
-        let offsetX: number;
-        let offsetY: number;
-
-        if (canvasRatio > imgRatio) {
-          drawW = w;
-          drawH = w / imgRatio;
-          offsetX = 0;
-          offsetY = (h - drawH) / 2;
-        } else {
-          drawH = h;
-          drawW = h * imgRatio;
-          offsetX = (w - drawW) / 2;
-          offsetY = (h - drawH) / 2;
-        }
-
-        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
-
-        // Subtle gradient vignette around bottom and top edges
-        const vignetteBottom = ctx.createLinearGradient(0, h - 32, 0, h);
-        vignetteBottom.addColorStop(0, 'rgba(17, 24, 39, 0)');
-        vignetteBottom.addColorStop(1, 'rgba(17, 24, 39, 0.45)');
-        ctx.fillStyle = vignetteBottom;
-        ctx.fillRect(0, h - 32, w, 32);
-
-        const vignetteTop = ctx.createLinearGradient(0, 0, 0, 24);
-        vignetteTop.addColorStop(0, 'rgba(17, 24, 39, 0.35)');
-        vignetteTop.addColorStop(1, 'rgba(17, 24, 39, 0)');
-        ctx.fillStyle = vignetteTop;
-        ctx.fillRect(0, 0, w, 24);
+        const fade = ctx.createLinearGradient(0, height - 48, 0, height);
+        fade.addColorStop(0, 'rgba(4, 6, 11, 0)');
+        fade.addColorStop(1, 'rgba(4, 6, 11, 0.85)');
+        ctx.fillStyle = fade;
+        ctx.fillRect(0, height - 48, width, 48);
       }
+
       ctx.restore();
     };
 
-    if (img.complete) {
-      render();
-    } else {
-      img.onload = () => render();
-    }
+    if (image.complete) render();
+    else image.onload = render;
 
     window.addEventListener('resize', render);
-    return () => {
-      window.removeEventListener('resize', render);
-    };
+    return () => window.removeEventListener('resize', render);
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
       role="img"
-      aria-label="Forensic optical flux and telemetry stage"
+      aria-label="Static optical and acoustic analysis plate"
       className="w-full h-full block"
     />
   );
 };
 
-// ─── Main Login Page ────────────────────────────────────────────────────────
+const CHANNELS = [
+  {
+    code: 'CH-V',
+    title: 'Face transformer branch',
+    detail: 'ViT-B/16 spatial patches → 4-layer temporal transformer.',
+    icon: ScanFace,
+    tone: 'text-[var(--ch-visual)]',
+  },
+  {
+    code: 'CH-A',
+    title: 'Acoustic transformer branch',
+    detail: '40 MFCC + 64 log-mel bands → acoustic patch tokens.',
+    icon: AudioLines,
+    tone: 'text-[var(--ch-audio)]',
+  },
+  {
+    code: 'DWF',
+    title: 'Dynamic weight fusion',
+    detail: 'Gating MLP yields per-sample trust weights w_v, w_a.',
+    icon: GitMerge,
+    tone: 'text-[var(--text-200)]',
+  },
+];
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get('next') || '/app';
   const { login, isLoggingIn } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -128,288 +120,170 @@ export const LoginPage: React.FC = () => {
     mode: 'onSubmit',
   });
 
+  const registerHref = next ? `/register?next=${encodeURIComponent(next)}` : '/register';
+
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
     try {
       await login(data);
       navigate(next, { replace: true });
-    } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        if (err.status === 429) {
-          setServerError('Rate limit exceeded. Please wait 60 seconds.');
-        } else if (err.status === 401) {
-          setServerError('Invalid credentials. Verify your email and password.');
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        if (error.status === 429) {
+          setServerError('Rate limit reached. Wait 60 seconds before retrying.');
+        } else if (error.status === 401) {
+          setServerError('Credentials rejected. Verify the operator email and password.');
         } else {
-          setServerError('Backend server unavailable. Please ensure the backend is running on port 8000.');
+          setServerError('Authentication service unreachable. Confirm the API is running.');
         }
       } else {
-        setServerError('Authentication failed. Check your connection to the server.');
+        setServerError('Authentication failed. Check the connection to the API.');
       }
     }
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#090D14] text-[#E8EDF5] flex flex-col lg:flex-row relative overflow-hidden font-sans">
-      {/* ── LEFT SECTION — Brand & Neural Face Visual Area (50% on desktop) ── */}
+    <main className="min-h-screen w-full bg-[var(--surface-base)] text-[var(--text-100)] grid lg:grid-cols-2 font-sans">
+      {/* ── Left: identity and modality plate ─────────────────────────────── */}
       <aside
-        className="w-full lg:w-1/2 bg-[#0D131E] border-b lg:border-b-0 lg:border-r border-[#253247] flex flex-col justify-between relative overflow-hidden shrink-0"
-        style={{ padding: 'clamp(20px, 3.5vw, 44px)' }}
-        aria-label="PARALLAX Forensic Intelligence Platform"
+        aria-label="PARALLAX platform overview"
+        className="relative flex flex-col justify-between gap-8 border-b lg:border-b-0 lg:border-r border-[var(--line)] px-6 py-7 sm:px-10 sm:py-9"
       >
-        {/* Subtle radial ambient background glow */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#648CFF]/8 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-[#35C9D0]/5 rounded-full blur-3xl" />
-        </div>
-
-        {/* Top Brand Identity */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#111827] border border-[#253247] shadow-sm flex items-center justify-center text-[#648CFF]">
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <polygon points="12 2 2 7 12 12 22 7 12 2" />
-              <polyline points="2 17 12 22 22 17" />
-              <polyline points="2 12 12 17 22 12" />
-            </svg>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-[var(--radius-lg)] bg-[var(--surface-card)] border border-[var(--line)] flex items-center justify-center text-[var(--cobalt-300)]">
+            <ParallaxLogo size={22} />
+          </span>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold tracking-wider text-[#E8EDF5]">PARALLAX</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#171F2D] border border-[#253247] text-[#648CFF] font-medium">
-              </span>
-            </div>
-            <span className="text-xs text-[#91A0B8]">Multimodal Audio-Visual Deepfake Detection System</span>
+            <span className="font-display text-[15px] font-bold tracking-[0.1em]">PARALLAX</span>
+            <span className="font-mono text-[10px] text-[var(--text-400)] tracking-wide">
+              AUDIO-VISUAL DEEPFAKE FORENSICS
+            </span>
           </div>
         </div>
 
-        {/* Center Visual Stage: Neural Face Mesh inside Telemetry Box & Feature Cards */}
-        <div className="relative z-10 my-6 lg:my-auto flex flex-col w-full max-w-[540px] mx-auto" style={{ gap: '16px' }}>
-          {/* Main Visual Box */}
-          <div className="w-full h-44 sm:h-56 lg:h-64 rounded-xl bg-[#111827] border border-[#253247] overflow-hidden relative shadow-inner">
-            <NeuralFaceCanvas />
-
-            {/* Stream Indicators */}
-            <div className="absolute top-3 left-3 flex items-center gap-2 pointer-events-none">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#090D14]/90 border border-[#253247] text-[11px] font-medium text-[#648CFF] backdrop-blur-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#648CFF]" />
-                Visual Stream 
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#090D14]/90 border border-[#253247] text-[11px] font-medium text-[#06B6D4] backdrop-blur-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#06B6D4]" />
-                Acoustic Stream 
-              </span>
+        <div className="w-full max-w-[520px] mx-auto lg:mx-0 flex flex-col gap-5">
+          <div className="relative overflow-hidden rounded-[var(--radius-cell)] border border-[var(--line)] bg-[var(--surface-card)]">
+            <div className="h-40 sm:h-56 lg:h-60">
+              <SignalPlate />
             </div>
 
-            <div className="absolute bottom-3 right-3 pointer-events-none">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#090D14]/90 border border-[#253247] text-[11px] font-medium text-[#35C99A] backdrop-blur-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#35C99A]" />
-                Dual-Stream Coherence
-              </span>
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-[var(--line)] font-mono text-[10px] tracking-wide">
+              <span className="text-[var(--text-400)]">FRAME 001/032 · 224×224</span>
+              <span className="text-[var(--text-300)]">SYNC 0.82</span>
             </div>
           </div>
 
-          {/* Forensic Feature Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div
-              className="rounded-lg bg-[#111827]/70 border border-[#253247] flex flex-col"
-              style={{ padding: '12px 14px', gap: '4px' }}
-            >
-              <span className="text-xs font-semibold text-[#E8EDF5]">Spatial-Temporal Artifacts</span>
-              <p className="text-[11px] text-[#91A0B8] leading-relaxed">
-                Facial warping, boundary inconsistency, and temporal photoplethysmography.
-              </p>
-            </div>
-            <div
-              className="rounded-lg bg-[#111827]/70 border border-[#253247] flex flex-col"
-              style={{ padding: '12px 14px', gap: '4px' }}
-            >
-              <span className="text-xs font-semibold text-[#E8EDF5]">Neural Voice Coherence</span>
-              <p className="text-[11px] text-[#91A0B8] leading-relaxed">
-                Spectral acoustic anomalies, synthetic harmonic markers, and vocal timbre decay.
-              </p>
-            </div>
-          </div>
+          <dl className="grid gap-3 sm:grid-cols-3 list-none">
+            {CHANNELS.map((channel) => {
+              const Icon = channel.icon;
+              return (
+                <div
+                  key={channel.code}
+                  className="rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--surface-card)] p-3 flex flex-col gap-1.5"
+                >
+                  <dt className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] text-[var(--text-400)]">
+                    <Icon size={13} className={channel.tone} aria-hidden="true" />
+                    {channel.code}
+                  </dt>
+                  <dd className="text-[12px] font-semibold text-[var(--text-200)] leading-snug">
+                    {channel.title}
+                  </dd>
+                  <dd className="text-[11px] text-[var(--text-400)] leading-relaxed">
+                    {channel.detail}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
         </div>
 
-        {/* Bottom Status Strip */}
-        <div className="relative z-10 pt-3 border-t border-[#253247]/60 flex items-center justify-between text-xs text-[#91A0B8]">
-          <span>Multi-modal deepfake detection bench</span>
-          <span className="text-[11px] font-medium text-[#648CFF]">256-BIT ROTATING SESSIONS</span>
+        <div className="flex items-center gap-2 border-t border-[var(--line)] pt-3 text-[11px] text-[var(--text-400)] font-mono">
+          <ShieldCheck size={13} className="text-[var(--success-500)] shrink-0" aria-hidden="true" />
+          <span>Argon2id credentials · in-memory access tokens · tenant-scoped records</span>
         </div>
       </aside>
 
-      {/* ── RIGHT SECTION — Login Form (50% on desktop) ── */}
+      {/* ── Right: authentication form ─────────────────────────────────────── */}
       <section
-        className="w-full lg:w-1/2 flex flex-col justify-center items-center relative overflow-hidden"
-        style={{ padding: 'clamp(28px, 4vw, 48px) clamp(16px, 3vw, 32px)' }}
-        aria-label="User Authentication Form"
+        aria-label="Operator authentication"
+        className="flex items-center justify-center px-5 py-10 sm:px-8"
       >
-        <div className="w-full max-w-[420px] relative z-10 flex flex-col">
-          {/* Elevated Card */}
-          <div
-            className="w-full bg-[#111827] border border-[#253247] rounded-2xl shadow-xl flex flex-col"
-            style={{ padding: 'clamp(24px, 3.5vw, 36px)' }}
-          >
-            {/* Header inside Card */}
-            <div className="text-left" style={{ marginBottom: '24px' }}>
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#E8EDF5]">
-                Welcome back
-                <span className="sr-only">AUTHENTICATE ANALYST</span>
-              </h1>
-              <p className="text-sm text-[#91A0B8] leading-relaxed" style={{ marginTop: '8px' }}>
-                Sign in to continue to your deepfake detection workspace.
-              </p>
-            </div>
+        <div className="w-full max-w-[400px] flex flex-col gap-6">
+          <header className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--cobalt-300)]">
+              Operator access
+            </span>
+            <h1 className="text-[26px] sm:text-[30px] font-semibold tracking-tight leading-tight text-[var(--text-100)]">
+              Authenticate operator
+              <span className="sr-only"> AUTHENTICATE ANALYST</span>
+            </h1>
+            <p className="text-[13px] text-[var(--text-300)] leading-relaxed">
+              Sign in to reach the detection bench, forensic ledger and reference corpus.
+            </p>
+          </header>
 
-            {serverError && (
-              <div
-                role="alert"
-                className="rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5"
-                style={{ padding: '12px 14px', marginBottom: '20px' }}
-              >
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <div className="flex-1 leading-relaxed">{serverError}</div>
-              </div>
-            )}
-
-            {/* Form Elements */}
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" style={{ gap: '18px' }} noValidate>
-              {/* Email Field */}
-              <div className="flex flex-col" style={{ gap: '6px' }}>
-                <label
-                  htmlFor="auth-email"
-                  className="block text-xs font-medium text-[#91A0B8]"
-                >
-                  Email address <span className="sr-only">Operator Email</span>
-                </label>
-                <div className="relative flex items-center w-full">
-                  <input
-                    id="auth-email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="analyst@parallax.io"
-                    aria-invalid={!!errors.email}
-                    aria-describedby={errors.email ? 'auth-email-error' : undefined}
-                    style={{
-                      paddingLeft: '14px',
-                      paddingRight: '14px',
-                      height: '44px',
-                    }}
-                    className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
-                      errors.email ? 'border-red-500/60' : 'border-[#253247] hover:border-[#374866]'
-                    }`}
-                    {...register('email')}
-                  />
-                </div>
-                {errors.email && (
-                  <p id="auth-email-error" role="alert" className="text-xs text-red-400 flex items-center gap-1.5" style={{ marginTop: '4px' }}>
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{errors.email.message}</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Password Field */}
-              <div className="flex flex-col" style={{ gap: '6px' }}>
-                <label
-                  htmlFor="auth-password"
-                  className="block text-xs font-medium text-[#91A0B8]"
-                >
-                  Password <span className="sr-only">Password Phrase</span>
-                </label>
-                <div className="relative flex items-center w-full">
-                  <input
-                    id="auth-password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="••••••••••••"
-                    aria-invalid={!!errors.password}
-                    aria-describedby={errors.password ? 'auth-password-error' : undefined}
-                    style={{
-                      paddingLeft: '14px',
-                      paddingRight: '44px',
-                      height: '44px',
-                    }}
-                    className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
-                      errors.password ? 'border-red-500/60' : 'border-[#253247] hover:border-[#374866]'
-                    }`}
-                    {...register('password')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password text' : 'Show password text'}
-                    style={{ padding: '8px' }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#91A0B8] hover:text-[#E8EDF5] rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p id="auth-password-error" role="alert" className="text-xs text-red-400 flex items-center gap-1.5" style={{ marginTop: '4px' }}>
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{errors.password.message}</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <div style={{ paddingTop: '6px' }}>
-                <button
-                  type="submit"
-                  disabled={isLoggingIn}
-                  style={{ height: '44px', padding: '0 20px' }}
-                  className="w-full bg-[#3B66EB] hover:bg-[#4E77F3] active:bg-[#3258D6] text-white font-medium text-sm rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {isLoggingIn ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Sign In</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-
-            {/* Registration Navigation Link */}
+          {serverError && (
             <div
-              className="border-t border-[#253247] text-center text-xs text-[#91A0B8]"
-              style={{ marginTop: '24px', paddingTop: '18px' }}
+              role="alert"
+              className="flex items-start gap-2.5 rounded-[var(--radius-lg)] border border-[var(--alert-500)]/40 bg-[var(--alert-bg)] px-3.5 py-3 text-[12px] text-[var(--text-200)]"
             >
-              <span>Don't have an account? </span>
-              <Link
-                to={`/register${next ? `?next=${encodeURIComponent(next)}` : ''}`}
-                className="font-medium text-[#648CFF] hover:text-[#88A7FF] hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] rounded"
-              >
-                Create account
-              </Link>
+              <AlertCircle size={15} className="text-[var(--alert-400)] shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-1.5">
+                <span className="leading-relaxed">{serverError}</span>
+                {serverError.startsWith('Credentials rejected') && (
+                  <Link
+                    to={registerHref}
+                    className="text-[var(--cobalt-300)] underline underline-offset-2 hover:text-[var(--cobalt-200)]"
+                  >
+                    No operator account yet? Enrol one.
+                  </Link>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Security Footnote */}
-          <div
-            className="flex items-center justify-center gap-2 text-center text-xs text-[#91A0B8]"
-            style={{ marginTop: '20px' }}
-          >
-            <ShieldCheck className="w-4 h-4 text-[#648CFF] shrink-0" />
-            <span>Argon2id zero-knowledge hashing · 256-bit rotating sessions</span>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+            <Field
+              label="Operator email"
+              type="email"
+              autoComplete="email"
+              placeholder="analyst@institution.org"
+              error={errors.email?.message}
+              {...register('email')}
+            />
+
+            <Field
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••••••"
+              error={errors.password?.message}
+              {...register('password')}
+            />
+
+            <Button
+              type="submit"
+              size="md"
+              loading={isLoggingIn}
+              icon={isLoggingIn ? undefined : <ArrowRight size={15} />}
+              iconPosition="right"
+              className="w-full mt-1"
+            >
+              {isLoggingIn ? 'Verifying credentials' : 'Sign in'}
+            </Button>
+          </form>
+
+          <div className="border-t border-[var(--line)] pt-4 text-[12px] text-[var(--text-400)]">
+            New to this bench?{' '}
+            <Link
+              to={registerHref}
+              className="font-medium text-[var(--cobalt-300)] hover:text-[var(--cobalt-200)] underline-offset-2 hover:underline"
+            >
+              Create an operator account
+            </Link>
           </div>
         </div>
       </section>
     </main>
   );
 };
-

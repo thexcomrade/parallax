@@ -80,3 +80,82 @@ async def test_distributed_cancellation_signal() -> None:
     # Allow async task to persist cancellation key
     await asyncio.sleep(0.05)
     assert await runner.is_cancelled(aid) is True
+
+
+@pytest.mark.asyncio
+async def test_admission_capacity_tenant_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When a tenant has reached max waiting jobs, admission must be rejected with 429."""
+    from app.core.config import settings
+    from app.core.errors import AppException
+    from app.db.models import Analysis, User
+    from app.db.session import SessionLocal
+
+    runner = JobRunner()
+    monkeypatch.setattr(settings, "ANALYSIS_QUEUE_MAX_WAITING_PER_TENANT", 3)
+
+    with SessionLocal() as db:
+        # Create test user
+        test_user = db.query(User).filter(User.email == "tenant_limit_test@example.com").first()
+        if not test_user:
+            test_user = User(
+                email="tenant_limit_test@example.com",
+                password_hash="fakehash",
+                role="operator",
+            )
+            db.add(test_user)
+            db.commit()
+            db.refresh(test_user)
+
+        # Clear any prior queued analyses for this user
+        db.query(Analysis).filter(
+            Analysis.user_id == test_user.id, Analysis.status == "queued"
+        ).delete()
+        db.commit()
+
+        # Add 3 queued analyses
+        for i in range(3):
+            db.add(
+                Analysis(
+                    id=f"tenant-test-job-{i}",
+                    user_id=test_user.id,
+                    status="queued",
+                    original_name=f"test_{i}.mp4",
+                    sha256=f"hash_{i}",
+                    size_bytes=1024,
+                    duration_s=2.0,
+                    video_path="/tmp/fake.mp4",
+                )
+            )
+        db.commit()
+
+        # 4th check should raise 429 TENANT_QUEUE_LIMIT_EXCEEDED
+        with pytest.raises(AppException) as exc_info:
+            await runner.check_admission_capacity(user_id=test_user.id)
+        assert exc_info.value.code == "TENANT_QUEUE_LIMIT_EXCEEDED"
+        assert exc_info.value.status_code == 429
+
+        # Cleanup
+        db.query(Analysis).filter(Analysis.user_id == test_user.id).delete()
+        db.delete(test_user)
+        db.commit()
+
+
+@pytest.mark.asyncio
+async def test_admission_capacity_global_depth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When global stream depth reaches max, admission must be rejected with 503."""
+    from app.core.config import settings
+    from app.core.errors import AppException
+
+    runner = JobRunner()
+    monkeypatch.setattr(settings, "ANALYSIS_QUEUE_MAX_DEPTH", 2)
+
+    redis = await get_redis_client()
+    # Add dummy stream items to exceed depth
+    await redis.xadd(STREAM_TASKS, {"analysis_id": "dummy-1"})
+    await redis.xadd(STREAM_TASKS, {"analysis_id": "dummy-2"})
+
+    with pytest.raises(AppException) as exc_info:
+        await runner.check_admission_capacity(user_id=999)
+    assert exc_info.value.code == "ANALYSIS_CAPACITY_EXCEEDED"
+    assert exc_info.value.status_code == 503
+

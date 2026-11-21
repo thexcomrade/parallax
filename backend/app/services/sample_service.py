@@ -22,6 +22,23 @@ from app.services.upload_service import process_upload_stream
 
 logger = logging.getLogger(__name__)
 
+_HTTP_LIMITS = httpx.Limits(max_connections=10, max_keepalive_connections=5, keepalive_expiry=30.0)
+_sample_client: httpx.Client | None = None
+
+
+def get_sample_client() -> httpx.Client:
+    """Return a pooled, reusable HTTP client for media sample downloads."""
+    global _sample_client
+    if _sample_client is None or _sample_client.is_closed:
+        _sample_client = httpx.Client(
+            headers={"User-Agent": "PARALLAX-Forensics/1.0 (academic; forensics-research)"},
+            verify=certifi.where(),
+            timeout=12.0,
+            follow_redirects=False,
+            limits=_HTTP_LIMITS,
+        )
+    return _sample_client
+
 CURATED_SAMPLES: list[dict[str, Any]] = [
     {
         "id": "wm-authentic-apollo11",
@@ -234,42 +251,37 @@ async def download_and_analyze_sample(
         # Download upstream
         download_success = False
         try:
-            with httpx.Client(
-                headers={"User-Agent": "PARALLAX-Forensics/1.0 (academic; forensics-research)"},
-                verify=certifi.where(),
-                timeout=12.0,
-                follow_redirects=False,
-            ) as client:
-                # Custom redirect check to prevent foreign redirect bypass
-                current_url = sample.download_url
-                for _ in range(3):  # allow at most 3 redirects
-                    resp = client.get(current_url)
-                    if resp.status_code in (301, 302, 303, 307, 308):
-                        redir_url = resp.headers.get("location")
-                        if not redir_url:
-                            break
-                        safe_redir, redir_reason = is_ssrf_safe_url(redir_url)
-                        if not safe_redir:
+            client = get_sample_client()
+            # Custom redirect check to prevent foreign redirect bypass
+            current_url = sample.download_url
+            for _ in range(3):  # allow at most 3 redirects
+                resp = client.get(current_url)
+                if resp.status_code in (301, 302, 303, 307, 308):
+                    redir_url = resp.headers.get("location")
+                    if not redir_url:
+                        break
+                    safe_redir, redir_reason = is_ssrf_safe_url(redir_url)
+                    if not safe_redir:
+                        raise AppException(
+                            "SSRF_REDIRECT_BLOCKED",
+                            f"Redirect to unsafe destination blocked: {redir_reason}",
+                            status_code=400,
+                        )
+                    current_url = redir_url
+                elif resp.status_code == 200:
+                    for chunk in resp.iter_bytes(chunk_size=65536):
+                        total_bytes += len(chunk)
+                        if total_bytes > max_bytes:
                             raise AppException(
-                                "SSRF_REDIRECT_BLOCKED",
-                                f"Redirect to unsafe destination blocked: {redir_reason}",
-                                status_code=400,
+                                "UPLOAD_TOO_LARGE",
+                                "Sample exceeds maximum file size",
+                                status_code=413,
                             )
-                        current_url = redir_url
-                    elif resp.status_code == 200:
-                        for chunk in resp.iter_bytes(chunk_size=65536):
-                            total_bytes += len(chunk)
-                            if total_bytes > max_bytes:
-                                raise AppException(
-                                    "UPLOAD_TOO_LARGE",
-                                    "Sample exceeds maximum file size",
-                                    status_code=413,
-                                )
-                            content_buf.write(chunk)
-                        download_success = True
-                        break
-                    else:
-                        break
+                        content_buf.write(chunk)
+                    download_success = True
+                    break
+                else:
+                    break
         except AppException:
             raise
         except Exception as net_err:

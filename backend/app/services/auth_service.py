@@ -199,6 +199,12 @@ class AuthService:
             raise AppException(
                 "WEAK_PASSWORD", "Password must be at least 12 characters", status_code=400
             )
+        if verify_password(new_pass, user.password_hash):
+            raise AppException(
+                "PASSWORD_REUSE",
+                "New password cannot be the same as current password",
+                status_code=400,
+            )
         user.password_hash = hash_password(new_pass)
         db.commit()
         AuthService.revoke_all_tokens_for_user(db, user.id)

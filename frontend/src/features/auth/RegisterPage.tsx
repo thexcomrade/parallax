@@ -2,19 +2,21 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowRight, AlertCircle, Check, ShieldCheck } from 'lucide-react';
 import { registerSchema, type RegisterFormData } from './authSchemas';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  ArrowRight,
-  Check,
-  Circle,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  Loader2,
-  ShieldCheck,
-} from 'lucide-react';
 import { ApiError } from '@/lib/api';
+import { ParallaxLogo } from '@/components/brand/ParallaxLogo';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+
+const CRITERIA = [
+  { id: 'length', label: '12 characters or more', test: (value: string) => value.length >= 12 },
+  { id: 'upper', label: 'Uppercase letter', test: (value: string) => /[A-Z]/.test(value) },
+  { id: 'lower', label: 'Lowercase letter', test: (value: string) => /[a-z]/.test(value) },
+  { id: 'number', label: 'Number', test: (value: string) => /[0-9]/.test(value) },
+  { id: 'symbol', label: 'Symbol', test: (value: string) => /[^A-Za-z0-9]/.test(value) },
+];
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,8 +25,6 @@ export const RegisterPage: React.FC = () => {
 
   const { register: registerAnalyst, login, isRegistering } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -33,341 +33,180 @@ export const RegisterPage: React.FC = () => {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
+    defaultValues: { email: '', password: '', confirmPassword: '' },
     mode: 'onSubmit',
   });
 
-  const passwordVal = watch('password', '');
+  const passwordValue = watch('password', '');
+  const results = CRITERIA.map((criterion) => ({
+    ...criterion,
+    passed: criterion.test(passwordValue),
+  }));
+  const passedCount = results.filter((criterion) => criterion.passed).length;
+  const strengthLabel =
+    passedCount === CRITERIA.length
+      ? 'Optimal [5/5]'
+      : `${passedCount}/${CRITERIA.length} required`;
 
-  // Live Password Strength Criteria
-  const hasMinLength = passwordVal.length >= 12;
-  const hasUpper = /[A-Z]/.test(passwordVal);
-  const hasLower = /[a-z]/.test(passwordVal);
-  const hasNumber = /[0-9]/.test(passwordVal);
-  const hasSpecial = /[^A-Za-z0-9]/.test(passwordVal);
-
-  const criteria = [
-    { id: 'length', label: '12+ characters', passed: hasMinLength },
-    { id: 'upper', label: 'Uppercase letter (A-Z)', passed: hasUpper },
-    { id: 'lower', label: 'Lowercase letter (a-z)', passed: hasLower },
-    { id: 'number', label: 'Number (0-9)', passed: hasNumber },
-    { id: 'special', label: 'Special symbol (!@#$)', passed: hasSpecial },
-  ];
-
-  const passedCount = criteria.filter((c) => c.passed).length;
+  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : '/login';
 
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
     try {
       await registerAnalyst(data);
-      // Auto-authenticate upon registration
       await login({ email: data.email, password: data.password });
       navigate(next, { replace: true });
-    } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        if (err.status === 429) {
-          setServerError('Rate limit exceeded. Please wait 60 seconds.');
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        if (error.status === 429) {
+          setServerError('Rate limit reached. Wait 60 seconds before retrying.');
         } else {
-          setServerError(err.message || 'Registration failed.');
+          setServerError(error.message || 'Enrolment failed.');
         }
       } else {
-        setServerError('Registration failed. Try again.');
+        setServerError('Enrolment failed. Check the connection to the API.');
       }
     }
   };
 
   return (
-    <main
-      className="min-h-screen bg-[#090D14] text-[#E8EDF5] flex flex-col justify-center items-center relative overflow-hidden font-sans"
-      style={{ padding: '48px 16px' }}
-    >
-      {/* Subtle background ambient lighting */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[480px] bg-[#648CFF]/5 rounded-full blur-3xl pointer-events-none" />
-      </div>
-
-      <div className="w-full max-w-[440px] relative z-10 flex flex-col items-center">
-        {/* Brand Header */}
-        <div className="flex flex-col items-center text-center" style={{ marginBottom: '28px' }}>
-          <div
-            className="inline-flex items-center gap-2 rounded-full bg-[#111827] border border-[#253247] shadow-sm"
-            style={{ padding: '6px 14px', marginBottom: '16px' }}
-          >
-            <span className="flex h-2 w-2 relative">
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#648CFF]" />
+    <main className="min-h-screen bg-[var(--surface-base)] text-[var(--text-100)] flex flex-col items-center justify-center px-5 py-12 font-sans">
+      <div className="w-full max-w-[440px] flex flex-col gap-6">
+        <header className="flex flex-col gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-[var(--radius-lg)] bg-[var(--surface-card)] border border-[var(--line)] flex items-center justify-center text-[var(--cobalt-300)]">
+              <ParallaxLogo size={22} />
             </span>
-            <span className="text-[11px] font-bold tracking-widest text-[#E8EDF5] uppercase">
-              PARALLAX
-            </span>
-            <span className="text-[10px] text-[#475569]">/</span>
+            <span className="font-display text-[14px] font-bold tracking-[0.1em]">PARALLAX</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#E8EDF5]">
-            Create Analyst Profile
-            <span className="sr-only">CREATE ANALYST PROFILE</span>
+          <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight">
+            Enrol an operator
+            <span className="sr-only"> CREATE ANALYST PROFILE</span>
           </h1>
-          <p className="text-sm text-[#91A0B8] max-w-sm" style={{ marginTop: '8px', lineHeight: '1.5' }}>
-            Sign up for zero-knowledge protected forensic analysis access
+          <p className="text-[13px] text-[var(--text-300)] leading-relaxed">
+            Accounts are scoped to a single operator. Every analysis you upload is bound to this
+            identity and invisible to other operators.
           </p>
-        </div>
+        </header>
 
-        {/* Card Container */}
-        <div
-          className="w-full bg-[#111827] border border-[#253247] rounded-2xl shadow-2xl relative z-10"
-          style={{ padding: '32px' }}
-        >
+        <div className="rounded-[var(--radius-cell)] border border-[var(--line)] bg-[var(--surface-card)] p-5 sm:p-6 flex flex-col gap-5">
           {serverError && (
             <div
               role="alert"
-              className="rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5"
-              style={{ padding: '12px 14px', marginBottom: '20px' }}
+              className="flex items-start gap-2.5 rounded-[var(--radius-lg)] border border-[var(--alert-500)]/40 bg-[var(--alert-bg)] px-3.5 py-3 text-[12px] text-[var(--text-200)]"
             >
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <div className="flex-1 leading-relaxed">{serverError}</div>
+              <AlertCircle size={15} className="text-[var(--alert-400)] shrink-0 mt-0.5" aria-hidden="true" />
+              <span className="leading-relaxed">{serverError}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col" style={{ gap: '18px' }} noValidate>
-            {/* Email Field */}
-            <div className="flex flex-col" style={{ gap: '6px' }}>
-              <label
-                htmlFor="operator-email"
-                className="block text-xs font-medium text-[#91A0B8]"
-              >
-                Operator Email
-              </label>
-              <div className="relative flex items-center w-full">
-                <input
-                  id="operator-email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="analyst@parallax.io"
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                  style={{
-                    paddingLeft: '14px',
-                    paddingRight: '14px',
-                    height: '44px',
-                  }}
-                  className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
-                    errors.email ? 'border-red-500/60' : 'border-[#253247] hover:border-[#374866]'
-                  }`}
-                  {...register('email')}
-                />
-              </div>
-              {errors.email && (
-                <p id="email-error" role="alert" className="text-xs text-red-400 flex items-center gap-1.5" style={{ marginTop: '4px' }}>
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{errors.email.message}</span>
-                </p>
-              )}
-            </div>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+            <Field
+              label="Operator email"
+              type="email"
+              autoComplete="email"
+              placeholder="analyst@institution.org"
+              error={errors.email?.message}
+              {...register('email')}
+            />
 
-            {/* Password Field */}
-            <div className="flex flex-col" style={{ gap: '6px' }}>
-              <label
-                htmlFor="new-password"
-                className="block text-xs font-medium text-[#91A0B8]"
-              >
-                New Password
-              </label>
-              <div className="relative flex items-center w-full">
-                <input
-                  id="new-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="••••••••••••"
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'password-error' : undefined}
-                  style={{
-                    paddingLeft: '14px',
-                    paddingRight: '44px',
-                    height: '44px',
-                  }}
-                  className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
-                    errors.password ? 'border-red-500/60' : 'border-[#253247] hover:border-[#374866]'
-                  }`}
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password text' : 'Show password text'}
-                  style={{ padding: '8px' }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#91A0B8] hover:text-[#E8EDF5] rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && (
-                <p id="password-error" role="alert" className="text-xs text-red-400 flex items-center gap-1.5" style={{ marginTop: '4px' }}>
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{errors.password.message}</span>
-                </p>
-              )}
-            </div>
+            <Field
+              label="New password"
+              hint="12+ characters"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••••••"
+              error={errors.password?.message}
+              {...register('password')}
+            />
 
-            {/* Password Validation & Entropy Strength Presentation */}
-            <div
-              className="rounded-xl bg-[#090D14]/80 border border-[#253247] flex flex-col"
-              style={{ padding: '14px 16px', gap: '10px' }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold tracking-wider text-[#91A0B8] uppercase">
-                  ENTROPY STRENGTH
-                </span>
+            <section aria-label="Password policy" className="flex flex-col gap-2.5 -mt-1">
+              <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.1em] uppercase">
+                <span className="text-[var(--text-400)]">Entropy strength</span>
                 <span
-                  className={`text-xs font-semibold ${
-                    passedCount === 5
-                      ? 'text-emerald-400'
-                      : passedCount >= 3
-                      ? 'text-amber-400'
-                      : 'text-[#91A0B8]'
-                  }`}
+                  className={
+                    passedCount === CRITERIA.length
+                      ? 'text-[var(--success-500)]'
+                      : 'text-[var(--text-300)]'
+                  }
                 >
-                  {passedCount === 5 ? 'OPTIMAL [5/5]' : `${passedCount}/5 Requirements Met`}
+                  {strengthLabel}
                 </span>
               </div>
 
-              {/* Progress bar with 5 segments */}
-              <div className="grid grid-cols-5 gap-1.5 w-full" style={{ height: '6px' }}>
-                {[1, 2, 3, 4, 5].map((lvl) => (
-                  <div
-                    key={lvl}
-                    className={`h-full rounded-full transition-colors duration-200 ${
-                      passedCount >= lvl
-                        ? passedCount === 5
-                          ? 'bg-emerald-400'
-                          : passedCount >= 3
-                          ? 'bg-amber-400'
-                          : 'bg-red-400'
-                        : 'bg-[#253247]'
-                    }`}
+              <div className="grid grid-cols-5 gap-1 h-1" aria-hidden="true">
+                {CRITERIA.map((criterion, index) => (
+                  <span
+                    key={criterion.id}
+                    className={
+                      passedCount > index
+                        ? 'rounded-full bg-[var(--success-500)]'
+                        : 'rounded-full bg-[var(--line-strong)]'
+                    }
                   />
                 ))}
               </div>
 
-              {/* Individual Criteria Checklist */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" style={{ paddingTop: '4px' }}>
-                {criteria.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`flex items-center gap-2 text-xs transition-colors duration-150 ${
-                      c.passed ? 'text-[#E8EDF5]' : 'text-[#91A0B8]'
-                    }`}
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 list-none mt-0.5">
+                {results.map((criterion) => (
+                  <li
+                    key={criterion.id}
+                    className="flex items-center gap-1.5 text-[11px] text-[var(--text-400)]"
                   >
-                    {c.passed ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    ) : (
-                      <Circle className="w-3.5 h-3.5 text-[#475569] shrink-0" />
-                    )}
-                    <span>{c.label}</span>
-                  </div>
+                    <Check
+                      size={12}
+                      aria-hidden="true"
+                      className={
+                        criterion.passed
+                          ? 'text-[var(--success-500)]'
+                          : 'text-[var(--text-500)]'
+                      }
+                    />
+                    <span className={criterion.passed ? 'text-[var(--text-200)]' : undefined}>
+                      {criterion.label}
+                    </span>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
 
-            {/* Confirm Password Field */}
-            <div className="flex flex-col" style={{ gap: '6px' }}>
-              <label
-                htmlFor="confirm-password"
-                className="block text-xs font-medium text-[#91A0B8]"
-              >
-                Confirm Password
-              </label>
-              <div className="relative flex items-center w-full">
-                <input
-                  id="confirm-password"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="••••••••••••"
-                  aria-invalid={!!errors.confirmPassword}
-                  aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
-                  style={{
-                    paddingLeft: '14px',
-                    paddingRight: '44px',
-                    height: '44px',
-                  }}
-                  className={`w-full bg-[#090D14] text-[#E8EDF5] placeholder-[#91A0B8]/50 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-[#648CFF] focus:border-transparent ${
-                    errors.confirmPassword
-                      ? 'border-red-500/60'
-                      : 'border-[#253247] hover:border-[#374866]'
-                  }`}
-                  {...register('confirmPassword')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  aria-label={showConfirmPassword ? 'Hide password text' : 'Show password text'}
-                  style={{ padding: '8px' }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#91A0B8] hover:text-[#E8EDF5] rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF]"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p
-                  id="confirm-password-error"
-                  role="alert"
-                  className="text-xs text-red-400 flex items-center gap-1.5"
-                  style={{ marginTop: '4px' }}
-                >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{errors.confirmPassword.message}</span>
-                </p>
-              )}
-            </div>
+            <Field
+              label="Confirm password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••••••"
+              error={errors.confirmPassword?.message}
+              {...register('confirmPassword')}
+            />
 
-            {/* Submit Button */}
-            <div style={{ paddingTop: '6px' }}>
-              <button
-                type="submit"
-                disabled={isRegistering}
-                style={{ height: '44px', padding: '0 20px' }}
-                className="w-full bg-[#3B66EB] hover:bg-[#4E77F3] active:bg-[#3258D6] text-white font-medium text-sm rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isRegistering ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Completing Enrollment...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Complete Enrollment</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
+            <Button
+              type="submit"
+              size="md"
+              loading={isRegistering}
+              icon={isRegistering ? undefined : <ArrowRight size={15} />}
+              iconPosition="right"
+              className="w-full mt-1"
+            >
+              {isRegistering ? 'Creating account' : 'Complete enrollment'}
+            </Button>
           </form>
 
-          {/* Navigation to Login */}
-          <div
-            className="border-t border-[#253247] text-center text-xs text-[#91A0B8]"
-            style={{ marginTop: '20px', paddingTop: '18px' }}
-          >
-            <span>Already have an account? </span>
+          <div className="border-t border-[var(--line)] pt-4 text-[12px] text-[var(--text-400)]">
+            Already enrolled?{' '}
             <Link
-              to={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`}
-              className="font-medium text-[#648CFF] hover:text-[#88A7FF] hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#648CFF] rounded"
+              to={loginHref}
+              className="font-medium text-[var(--cobalt-300)] hover:text-[var(--cobalt-200)] underline-offset-2 hover:underline"
             >
               Sign in
             </Link>
           </div>
         </div>
 
-        {/* Security & Credentials Note */}
-        <div
-          className="flex items-center justify-center gap-2 text-center text-xs text-[#91A0B8]"
-          style={{ marginTop: '24px' }}
-        >
-          <ShieldCheck className="w-4 h-4 text-[#648CFF] shrink-0" />
-          <span>Argon2id zero-knowledge hashing · 256-bit rotating sessions</span>
-        </div>
+        <p className="flex items-center justify-center gap-2 text-[11px] font-mono text-[var(--text-400)]">
+          <ShieldCheck size={13} className="text-[var(--success-500)] shrink-0" aria-hidden="true" />
+          Argon2id hashing · rotating refresh sessions
+        </p>
       </div>
     </main>
   );

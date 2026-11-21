@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     )
 
     APP_ENV: str = "development"
+    APP_VERSION: str = "1.1.0"
     SECRET_KEY: str = "insecure-dev-secret-key-change-in-production-min-32-chars"
     DATABASE_URL: str = "sqlite:///./storage/parallax.db"
     STORAGE_DIR: str = "./storage"
@@ -61,6 +62,28 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "parallax-media"
     S3_FORCE_PATH_STYLE: bool = True
     S3_PRESIGNED_EXPIRATION_S: int = 3600
+
+    # API Concurrency & Overload Protection (Workstream A)
+    API_WORKERS: int = 4
+    MAX_IN_FLIGHT_REQUESTS: int = 1500
+    MAX_CONCURRENT_UPLOADS: int = 20
+
+    # Database Connection Pool Budgeting (Workstream B)
+    # Total connections = API_WORKERS * (DB_POOL_SIZE + DB_MAX_OVERFLOW) + Worker(5) + Admin(5)
+    # 4 * (15 + 5) + 5 + 5 = 90 <= 100 (PostgreSQL max_connections)
+    DB_POOL_SIZE: int = 15
+    DB_MAX_OVERFLOW: int = 5
+    DB_POOL_TIMEOUT: float = 10.0
+
+    # Queue Backpressure & Controlled Rejection (Workstream C)
+    ANALYSIS_QUEUE_MAX_DEPTH: int = 100
+    ANALYSIS_QUEUE_MAX_WAITING_PER_TENANT: int = 5
+    ANALYSIS_QUEUE_ADMISSION_TIMEOUT_S: float = 5.0
+
+    # GPU-Aware Worker Scheduling (Workstream D)
+    INFERENCE_MAX_CONCURRENT_JOBS: int = 1
+    INFERENCE_GPU_MEMORY_RESERVE_MB: int = 1000
+    INFERENCE_JOB_TIMEOUT_SECONDS: int = 120
 
     # Calibration thresholds from README §5
     P_FAKE_HI: float = 0.65

@@ -72,7 +72,7 @@ export const PipelineRail: React.FC<PipelineRailProps> = ({
             className={clsx(
               'px-2.5 py-1 rounded-[var(--radius-sm)] border font-bold',
               isCompleted
-                ? 'bg-[var(--lime-400)]/15 border-[var(--lime-400)]/30 text-[var(--lime-400)]'
+                ? 'bg-[var(--success-500)]/15 border-[var(--success-500)]/30 text-[var(--success-500)]'
                 : isQueued
                 ? 'bg-[var(--surface-elevated)] border-[var(--border-strong)] text-[var(--text-300)]'
                 : 'bg-[var(--cobalt-500)]/15 border-[var(--cobalt-500)]/30 text-[var(--cobalt-300)]',
@@ -95,7 +95,7 @@ export const PipelineRail: React.FC<PipelineRailProps> = ({
           <div className="absolute inset-0 bg-[var(--cobalt-500)]/30 animate-pulse" />
         ) : (
           <div
-            className="h-full bg-gradient-to-r from-[var(--cobalt-500)] to-[var(--lime-400)] transition-all duration-300"
+            className="h-full bg-[var(--cobalt-400)] transition-[width] duration-[var(--motion-smooth)]"
             style={{ width: `${progressPercent}%` }}
           />
         )}
@@ -109,7 +109,7 @@ export const PipelineRail: React.FC<PipelineRailProps> = ({
           className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[var(--radius-sm)] bg-[var(--surface-elevated)] border border-[var(--border-strong)] text-xs font-sans"
         >
           {isCompleted ? (
-            <Check size={15} className="text-[var(--lime-400)] shrink-0" />
+            <Check size={15} className="text-[var(--success-500)] shrink-0" />
           ) : (
             <Loader2 size={15} className="animate-spin text-[var(--cobalt-400)] shrink-0" />
           )}
@@ -143,9 +143,9 @@ export const PipelineRail: React.FC<PipelineRailProps> = ({
                   className={clsx(
                     'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-mono',
                     isDone
-                      ? 'bg-[var(--lime-400)]/15 text-[var(--lime-400)] border border-[var(--lime-400)]/30'
+                      ? 'bg-[var(--success-500)]/15 text-[var(--success-500)] border border-[var(--success-500)]/30'
                       : isActive
-                      ? 'bg-[var(--cobalt-500)] text-white animate-pulse'
+                      ? 'bg-[var(--cobalt-500)] text-[var(--text-100)] animate-pulse'
                       : 'bg-[var(--surface-base)] text-[var(--text-500)] border border-[var(--border-subtle)]',
                   )}
                 >
@@ -163,7 +163,7 @@ export const PipelineRail: React.FC<PipelineRailProps> = ({
                     className={clsx(
                       'font-sans text-xs font-medium truncate',
                       isActive
-                        ? 'text-white font-semibold'
+                        ? 'text-[var(--text-100)] font-semibold'
                         : isDone
                         ? 'text-[var(--text-200)]'
                         : 'text-[var(--text-400)]',
@@ -182,7 +182,7 @@ export const PipelineRail: React.FC<PipelineRailProps> = ({
                 className={clsx(
                   'font-mono text-[10px] px-2 py-0.5 rounded uppercase tracking-wider shrink-0',
                   isDone
-                    ? 'text-[var(--lime-400)] font-semibold'
+                    ? 'text-[var(--success-500)] font-semibold'
                     : isActive
                     ? 'text-[var(--cobalt-300)] font-semibold animate-pulse'
                     : 'text-[var(--text-500)]',

@@ -1,13 +1,15 @@
 import json
+import os
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.session import get_db
+from app.db.session import SessionLocal
 from app.schemas.system import HealthResponse, ModelCardResponse, ReadyResponse
 
 router = APIRouter(tags=["System"])
@@ -19,25 +21,51 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
+_last_ready_time: float = 0.0
+_last_ready_response: ReadyResponse | None = None
+_ready_lock = threading.Lock()
+
+
 @router.get("/ready", response_model=ReadyResponse, summary="Readiness check")
-def ready(db: Session = Depends(get_db)) -> ReadyResponse:
-    """Verifies database connectivity and ML model readiness."""
-    db_ok = False
-    try:
-        db.execute(text("SELECT 1"))
-        db_ok = True
-    except Exception:
+def ready() -> ReadyResponse:
+    """Verifies database connectivity and ML model readiness.
+
+    Applies double-checked locking with a 1.0s TTL cache under high concurrency
+    to avoid DB connection pool exhaustion (thundering herd protection).
+    """
+    global _last_ready_time, _last_ready_response
+
+    now = time.monotonic()
+    is_cached = (now - _last_ready_time < 1.0) and (_last_ready_response is not None)
+    if os.environ.get("TESTING") != "1" and is_cached and _last_ready_response is not None:
+        return _last_ready_response
+
+    with _ready_lock:
+        now = time.monotonic()
+        is_cached = (now - _last_ready_time < 1.0) and (_last_ready_response is not None)
+        if os.environ.get("TESTING") != "1" and is_cached and _last_ready_response is not None:
+            return _last_ready_response
+
         db_ok = False
+        try:
+            with SessionLocal() as db:
+                db.execute(text("SELECT 1"))
+                db_ok = True
+        except Exception:
+            db_ok = False
 
-    checkpoint_exists = Path(settings.MODEL_PATH).exists()
-    mode = "trained" if checkpoint_exists else "untrained"
+        checkpoint_exists = Path(settings.MODEL_PATH).exists()
+        mode = "trained" if checkpoint_exists else "untrained"
 
-    return ReadyResponse(
-        status="ready" if db_ok else "degraded",
-        db_connected=db_ok,
-        model_loaded=checkpoint_exists,
-        model_mode=mode,
-    )
+        resp = ReadyResponse(
+            status="ready" if db_ok else "degraded",
+            db_connected=db_ok,
+            model_loaded=checkpoint_exists,
+            model_mode=mode,
+        )
+        _last_ready_time = now
+        _last_ready_response = resp
+        return resp
 
 
 @router.get("/model", response_model=ModelCardResponse, summary="Model Card metadata")

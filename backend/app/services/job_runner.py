@@ -20,9 +20,10 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.config import settings
+from app.core.errors import AppException
 from app.core.redis import get_redis_client
 from app.db.models import Analysis, AnalysisArtifact, AnalysisOutbox
 from app.db.session import SessionLocal
@@ -149,7 +150,7 @@ class JobRunner:
                         "enqueued_at": payload.get("enqueued_at", datetime.now(UTC).isoformat()),
                         "retry_count": str(item.retry_count),
                     }
-                    await redis.xadd(STREAM_TASKS, task_data)
+                    await redis.xadd(STREAM_TASKS, task_data, maxlen=10000, approximate=True)
                     item.status = "dispatched"
                     item.dispatched_at = datetime.now(UTC)
                     dispatched_count += 1
@@ -304,8 +305,81 @@ class JobRunner:
             return analysis.status if analysis else None
 
     # --------------------------------------------------------------------------
-    # Job Submission & Enqueueing
+    # Job Submission & Enqueueing with Admission Backpressure (Workstream C)
     # --------------------------------------------------------------------------
+    async def check_admission_capacity(self, user_id: int) -> None:
+        """Enforce atomic queue capacity and per-tenant waiting limits (Workstream C).
+
+        Raises:
+            AppException(code="ANALYSIS_CAPACITY_EXCEEDED", status_code=503)
+            AppException(code="TENANT_QUEUE_LIMIT_EXCEEDED", status_code=429)
+        """
+        # 1. Global Queue Depth Check in Redis Streams
+        try:
+            redis = await get_redis_client()
+            total_in_flight = 0
+            try:
+                groups = await redis.xinfo_groups(STREAM_TASKS)
+                found = False
+                for g in groups:
+                    if isinstance(g, dict) and g.get("name") == GROUP_WORKERS:
+                        lag = g.get("lag")
+                        pending = g.get("pending", 0)
+                        total_in_flight = int(lag or 0) + int(pending or 0)
+                        found = True
+                        break
+                if not found:
+                    total_in_flight = await redis.xlen(STREAM_TASKS)
+            except Exception:
+                try:
+                    total_in_flight = await redis.xlen(STREAM_TASKS)
+                except Exception:
+                    total_in_flight = 0
+
+            if total_in_flight >= settings.ANALYSIS_QUEUE_MAX_DEPTH:
+                logger.warning(
+                    "Queue admission rejected: total depth %d >= max %d",
+                    total_in_flight,
+                    settings.ANALYSIS_QUEUE_MAX_DEPTH,
+                )
+                raise AppException(
+                    code="ANALYSIS_CAPACITY_EXCEEDED",
+                    message="System analysis capacity is temporarily full. Please retry later.",
+                    status_code=503,
+                )
+        except AppException:
+            raise
+        except Exception as e:
+            logger.debug("Capacity check bypassed due to Redis connection issue: %s", e)
+
+        # 2. Per-Tenant Concurrency / Waiting Limit Check in Database
+        with SessionLocal() as db:
+            user_waiting = (
+                db.execute(
+                    select(func.count(Analysis.id)).where(
+                        Analysis.user_id == user_id,
+                        Analysis.status == "queued",
+                    )
+                ).scalar()
+                or 0
+            )
+            if user_waiting >= settings.ANALYSIS_QUEUE_MAX_WAITING_PER_TENANT:
+                logger.warning(
+                    "Tenant queue limit rejected for user %d: %d queued >= max %d",
+                    user_id,
+                    user_waiting,
+                    settings.ANALYSIS_QUEUE_MAX_WAITING_PER_TENANT,
+                )
+                limit = settings.ANALYSIS_QUEUE_MAX_WAITING_PER_TENANT
+                raise AppException(
+                    code="TENANT_QUEUE_LIMIT_EXCEEDED",
+                    message=(
+                        f"Per-operator queue limit of {limit} "
+                        "active jobs exceeded. Please wait for pending jobs to finish."
+                    ),
+                    status_code=429,
+                )
+
     async def check_and_acquire_upload_lock(self, user_id: int, sha256: str) -> bool:
         """Prevent duplicate submissions of the identical file within 60 seconds."""
         lock_key = f"{LOCK_UPLOAD_PREFIX}{user_id}:{sha256}"
@@ -358,7 +432,7 @@ class JobRunner:
         # 2. Immediate Redis Streams dispatch
         try:
             redis = await get_redis_client()
-            await redis.xadd(STREAM_TASKS, task_data)
+            await redis.xadd(STREAM_TASKS, task_data, maxlen=10000, approximate=True)
             with SessionLocal() as db:
                 rec = db.execute(
                     select(AnalysisOutbox).where(AnalysisOutbox.analysis_id == analysis_id)

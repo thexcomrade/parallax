@@ -79,10 +79,10 @@ def verify_audio_norm_stats(stats_path: Path) -> tuple[bool, str]:
         data = torch.load(stats_path, map_location="cpu", weights_only=True)
         if not isinstance(data, dict):
             return False, "Audio norm stats is not a dictionary."
-        required_keys = {"mean", "std", "feat_dim"}
-        missing = required_keys - set(data.keys())
-        if missing:
-            return False, f"Missing required keys in audio norm stats: {missing}"
+        if "mean" not in data or "std" not in data:
+            return False, "Missing 'mean' or 'std' in audio norm stats."
+        if "feat_dim" not in data and "feature_dim" not in data:
+            return False, "Missing 'feat_dim' or 'feature_dim' key in audio norm stats."
         return True, "Audio normalization statistics verified."
     except (RuntimeError, OSError, ValueError, KeyError) as exc:
         return False, str(exc)
@@ -206,6 +206,13 @@ def main() -> None:
     target_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(candidate_path, target_path)
     logger.info("Successfully copied candidate checkpoint to production target: %s", target_path)
+
+    # 4b. Promote audio normalization statistics if present
+    if stats_path.exists():
+        target_stats_path = target_path.parent / "audio_norm_stats.pt"
+        if target_stats_path.resolve() != stats_path.resolve():
+            shutil.copy2(stats_path, target_stats_path)
+            logger.info("Successfully updated production audio norm stats at %s", target_stats_path)
 
     # 5. Update model card provenance
     if args.model_card.exists():

@@ -314,9 +314,30 @@ class InferenceWorker:
                     await redis.xack(STREAM_TASKS, GROUP_WORKERS, msg_id)
                     return
 
+                # GPU-Aware VRAM Admission Check (Workstream D)
+                if self.device_info.is_cuda:
+                    free_b, _ = torch.cuda.mem_get_info(self.device)
+                    free_mb = free_b / (1024 * 1024)
+                    if free_mb < settings.INFERENCE_GPU_MEMORY_RESERVE_MB:
+                        logger.warning(
+                            "VRAM pressure: %.1f MB free < %d MB reserve; clearing CUDA cache...",
+                            free_mb,
+                            settings.INFERENCE_GPU_MEMORY_RESERVE_MB,
+                        )
+                        torch.cuda.empty_cache()
+                        free_b, _ = torch.cuda.mem_get_info(self.device)
+                        free_mb = free_b / (1024 * 1024)
+                        if free_mb < (settings.INFERENCE_GPU_MEMORY_RESERVE_MB / 2):
+                            raise RuntimeError(
+                                f"Insufficient GPU VRAM ({free_mb:.1f} MB); yielding retry"
+                            )
+
                 t0 = time.perf_counter()
                 try:
-                    await self._execute_pipeline(analysis_id, video_ref, artifact_dir_ref)
+                    await asyncio.wait_for(
+                        self._execute_pipeline(analysis_id, video_ref, artifact_dir_ref),
+                        timeout=float(settings.INFERENCE_JOB_TIMEOUT_SECONDS),
+                    )
                     dt = time.perf_counter() - t0
                     INFERENCE_DURATION_SECONDS.labels(status="completed").observe(dt)
                     # Successful completion: Acknowledge task in stream

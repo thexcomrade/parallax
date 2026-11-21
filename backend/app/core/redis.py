@@ -71,6 +71,8 @@ async def get_redis_client() -> aioredis.Redis:
                 url,
                 max_connections=settings.REDIS_MAX_CONNECTIONS,
                 decode_responses=True,
+                socket_timeout=5.0,
+                socket_connect_timeout=3.0,
             )
             client = aioredis.Redis(connection_pool=pool)
             await client.ping()
@@ -90,6 +92,8 @@ async def get_redis_client() -> aioredis.Redis:
                 url,
                 max_connections=settings.REDIS_MAX_CONNECTIONS,
                 decode_responses=True,
+                socket_timeout=5.0,
+                socket_connect_timeout=3.0,
             )
             client = aioredis.Redis(connection_pool=pool)
             await client.ping()

@@ -2,7 +2,7 @@
   "model_name": "AVT2-DWF",
   "model_version": "0.0.0",
   "model_mode": "trained",
-  "checkpoint_hash": "4ad3332ae85964ac",
+  "checkpoint_hash": "5884171e3858c1b7",
   "architecture": {
     "face_encoder": "ViT-B/16 + 4-layer 8-head temporal Transformer (d=256, n=4)",
     "audio_encoder": "MFCC/log-mel patch embed + 4-layer 8-head Transformer (d=256)",
@@ -48,6 +48,6 @@
   "out_of_scope": "Not for use as sole evidence in legal, journalistic or law-enforcement contexts.",
   "created_at": null,
   "evaluated_at": "2026-11-16T15:40:27.988770+00:00",
-  "promoted_at": "2026-11-20T02:03:19.122005+00:00",
-  "checkpoint_sha256_full": "4ad3332ae85964ac0d6e18645cc2c50a3f72dac90450c11ad94eb77c6be1294f"
+  "promoted_at": "2026-11-21T06:12:53.079008+00:00",
+  "checkpoint_sha256_full": "5884171e3858c1b7ac9e4de8e6943c4d1875327bd161cc9935f84b7119ed6e74"
 }

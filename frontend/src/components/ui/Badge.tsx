@@ -37,7 +37,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const variantStyles = {
     authentic:
-      'bg-[var(--lime-400)]/15 text-[var(--lime-400)] border border-[var(--lime-400)]/30',
+      'bg-[var(--success-500)]/15 text-[var(--success-500)] border border-[var(--success-500)]/30',
     fake:
       'bg-[var(--alert-500)]/15 text-[var(--alert-500)] border border-[var(--alert-500)]/35 font-black',
     inconclusive:
@@ -49,17 +49,17 @@ export const Badge: React.FC<BadgeProps> = ({
     cyan:
       'bg-[var(--cyan)]/15 text-[var(--cyan)] border border-[var(--cyan)]/30',
     warning:
-      'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+      'bg-[var(--warning-500)]/15 text-[var(--warning-500)] border border-[var(--warning-500)]/30',
   }[variant];
 
   const dotColor = {
-    authentic: 'bg-[var(--lime-400)]',
+    authentic: 'bg-[var(--success-500)]',
     fake: 'bg-[var(--alert-500)]',
-    inconclusive: 'bg-amber-400',
+    inconclusive: 'bg-[var(--warning-500)]',
     neutral: 'bg-[var(--text-400)]',
     cobalt: 'bg-[var(--cobalt-400)]',
     cyan: 'bg-[var(--cyan)]',
-    warning: 'bg-amber-400',
+    warning: 'bg-[var(--warning-500)]',
   }[variant];
 
   return (

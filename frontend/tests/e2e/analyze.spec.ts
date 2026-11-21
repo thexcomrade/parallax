@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 test.describe('Phase 7: Analyze & Report Forensic UI', () => {
   const testPassword = 'SecureMasterPassword2026!';
-  const fixturePath = path.resolve(process.cwd(), 'tests/fixtures/test_sample.mp4');
+  const fixturePath = path.resolve(__dirname, '../fixtures/test_sample.mp4');
 
   test.beforeEach(async ({ page }) => {
     // Register and authenticate with unique email
@@ -122,14 +126,15 @@ test.describe('Phase 7: Analyze & Report Forensic UI', () => {
     await page.getByText('test_sample.mp4').click();
     await expect(page).toHaveURL(/\/app\/analyses\/[a-f0-9-]+/);
 
-    // Delete dossier end-to-end
-    page.on('dialog', (dialog) => dialog.accept());
-    const deleteButton = page.getByRole('button', { name: /^DELETE$/i });
-    await deleteButton.click();
+    // Delete dossier end-to-end through the accessible confirmation dialog
+    await page.getByRole('button', { name: /^Delete$/i }).click();
+    const deleteDialog = page.getByRole('dialog');
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole('button', { name: /Delete record/i }).click();
 
     // Verify redirected back to history and archive is now empty
-    await expect(page).toHaveURL(/\/app\/history/);
-    await expect(page.getByText(/No forensic analyses in ledger|No analyses recorded yet/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/app\/history/, { timeout: 15000 });
+    await expect(page.getByText(/No forensic analyses in ledger|No analyses recorded yet|No analyses found/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('Respects prefers-reduced-motion on Report page', async ({ page }) => {

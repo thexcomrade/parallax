@@ -78,7 +78,7 @@ export const Dialog: React.FC<DialogProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--black-950)]/80 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--black-950)]/85"
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) {
           onClose();
@@ -100,10 +100,10 @@ export const Dialog: React.FC<DialogProps> = ({
         <span className="crop-mark crop-br" aria-hidden="true" />
 
         <div className="flex flex-col gap-1.5">
-          <div className="font-mono text-[10px] text-[var(--cobalt-400)] tracking-widest uppercase">
-            OPERATOR CONFIRMATION // PROMPT
+          <div className="font-mono text-[10px] text-[var(--cobalt-300)] tracking-[0.12em] uppercase">
+            Operator confirmation
           </div>
-          <h2 id="dialog-title" className="font-display font-black text-xl uppercase tracking-tight text-white">
+          <h2 id="dialog-title" className="font-display font-bold text-lg tracking-tight text-[var(--text-100)]">
             {title}
           </h2>
           {description && (
